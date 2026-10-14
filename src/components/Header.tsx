@@ -15,6 +15,7 @@ import {
   Laptop,
   Command,
   FolderSync,
+  Trash2,
 } from "lucide-react";
 import { useFileManagerStore } from "../store/useFileManagerStore";
 import { api } from "../services/tauriBridge";
@@ -33,6 +34,7 @@ export const Header: React.FC = () => {
     leftPane,
     rightPane,
     refreshPane,
+    deleteSelection,
     setSearchOpen,
     setCommandPaletteOpen,
     setNewFolderOpen,
@@ -147,6 +149,14 @@ export const Header: React.FC = () => {
           }`}
         >
           {showHiddenFiles ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+        </button>
+
+        <button
+          onClick={() => deleteSelection(false)}
+          title="Move Selected Items to Trash (⌫)"
+          className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-500/15 rounded-lg transition-colors group"
+        >
+          <Trash2 className="w-4 h-4 text-red-500 group-hover:scale-110 transition-transform" />
         </button>
 
         <div className="h-4 w-[1px] bg-border mx-1" />

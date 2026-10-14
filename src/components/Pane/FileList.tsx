@@ -23,10 +23,12 @@ import {
   Info,
   Check,
   FolderArchive,
+  AlertTriangle,
 } from "lucide-react";
 import { FileEntry, PaneId, SortField } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { formatBytes, formatDate, getFileCategory } from "../../utils/formatters";
+import { getFolderStyle } from "../../utils/folderColors";
 import { api } from "../../services/tauriBridge";
 
 interface FileListProps {
@@ -363,33 +365,41 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     }
   };
 
-  // Render File Icon
-  const renderIcon = (item: FileEntry) => {
+  // Render File Icon with colorful folders and responsive sizes
+  const renderIcon = (item: FileEntry, size: "sm" | "md" | "lg" = "sm") => {
+    const sizeClass = size === "lg" ? "w-10 h-10" : size === "md" ? "w-5 h-5" : "w-4 h-4";
+
     if (item.is_symlink) {
-      return <Link2 className="w-4 h-4 text-cyan-500 shrink-0" />;
+      return <Link2 className={`${sizeClass} text-cyan-500 shrink-0`} />;
     }
     if (item.is_dir) {
-      return <Folder className="w-4 h-4 text-blue-500 fill-blue-500/25 shrink-0" />;
+      const folderStyle = getFolderStyle(item.name);
+      const FolderIcon = folderStyle.Icon;
+      return (
+        <FolderIcon
+          className={`${sizeClass} ${folderStyle.strokeClass} ${folderStyle.fillClass} shrink-0 transition-transform`}
+        />
+      );
     }
 
     const cat = getFileCategory(item.mime_type, item.extension);
     switch (cat) {
       case "image":
-        return <ImageIcon className="w-4 h-4 text-purple-500 shrink-0" />;
+        return <ImageIcon className={`${sizeClass} text-purple-500 shrink-0`} />;
       case "video":
-        return <Film className="w-4 h-4 text-rose-500 shrink-0" />;
+        return <Film className={`${sizeClass} text-rose-500 shrink-0`} />;
       case "audio":
-        return <Music className="w-4 h-4 text-amber-500 shrink-0" />;
+        return <Music className={`${sizeClass} text-amber-500 shrink-0`} />;
       case "archive":
-        return <FileArchive className="w-4 h-4 text-orange-500 shrink-0" />;
+        return <FileArchive className={`${sizeClass} text-orange-500 shrink-0`} />;
       case "code":
-        return <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />;
+        return <FileCode className={`${sizeClass} text-emerald-500 shrink-0`} />;
       case "text":
-        return <FileText className="w-4 h-4 text-blue-400 shrink-0" />;
+        return <FileText className={`${sizeClass} text-blue-400 shrink-0`} />;
       case "pdf":
-        return <FileSpreadsheet className="w-4 h-4 text-red-500 shrink-0" />;
+        return <FileSpreadsheet className={`${sizeClass} text-red-500 shrink-0`} />;
       default:
-        return <File className="w-4 h-4 text-muted-foreground shrink-0" />;
+        return <File className={`${sizeClass} text-muted-foreground shrink-0`} />;
     }
   };
 
@@ -645,7 +655,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                     : "border-transparent hover:bg-muted/70 text-foreground"
                 } ${item.is_hidden ? "opacity-50" : ""}`}
               >
-                <div className="scale-125 mb-1.5 mt-1">{renderIcon(item)}</div>
+                <div className="mb-2 mt-1">{renderIcon(item, "lg")}</div>
                 <span className="text-[11px] text-center truncate max-w-full font-medium" title={item.name}>
                   {item.name}
                 </span>
@@ -812,20 +822,20 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                 </button>
               )}
 
-              <div className="h-[1px] bg-border/40 my-1" />
+              <div className="h-[1px] bg-red-500/20 my-1" />
 
               <button
                 onClick={() => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   deleteSelection(false);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between text-destructive hover:bg-destructive/15 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between text-red-600 dark:text-red-400 hover:bg-red-500/15 hover:text-red-700 dark:hover:text-red-300 font-medium transition-colors group"
               >
                 <div className="flex items-center space-x-2">
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5 text-red-500 group-hover:scale-110 transition-transform" />
                   <span>Move to Trash</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground font-mono">⌫</span>
+                <span className="text-[10px] text-red-500/80 font-mono font-semibold">⌫</span>
               </button>
 
               <button
@@ -833,16 +843,16 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   deleteSelection(true);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between text-destructive hover:bg-destructive/15 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between text-red-600 dark:text-red-400 hover:bg-red-600/20 hover:text-red-700 dark:hover:text-red-300 font-semibold transition-colors group"
               >
                 <div className="flex items-center space-x-2">
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-500 group-hover:scale-110 transition-transform" />
                   <span>Delete Permanently</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground font-mono">⇧⌫</span>
+                <span className="text-[10px] text-red-500 font-mono font-bold">⇧⌫</span>
               </button>
 
-              <div className="h-[1px] bg-border/40 my-1" />
+              <div className="h-[1px] bg-red-500/20 my-1" />
 
               <button
                 onClick={() => {

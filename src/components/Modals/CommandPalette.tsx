@@ -25,6 +25,7 @@ import {
   Edit2,
   FolderArchive,
   Info,
+  AlertTriangle,
 } from "lucide-react";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { api } from "../../services/tauriBridge";
@@ -36,6 +37,7 @@ interface CommandItem {
   icon: React.ElementType;
   shortcut?: string;
   action: () => void | Promise<void>;
+  isDanger?: boolean;
 }
 
 export const CommandPalette: React.FC = () => {
@@ -185,10 +187,20 @@ export const CommandPalette: React.FC = () => {
     {
       id: "file-delete",
       title: "Move Selected Items to Trash",
-      category: "File Operations",
+      category: "Warning",
       icon: Trash2,
       shortcut: "⌫",
       action: () => deleteSelection(false),
+      isDanger: true,
+    },
+    {
+      id: "file-delete-permanent",
+      title: "Permanently Delete Selected Items",
+      category: "Warning",
+      icon: AlertTriangle,
+      shortcut: "⇧⌫",
+      action: () => deleteSelection(true),
+      isDanger: true,
     },
     {
       id: "file-batch-rename",
@@ -395,15 +407,29 @@ export const CommandPalette: React.FC = () => {
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`h-9 px-3 rounded-lg flex items-center justify-between text-xs cursor-pointer transition-colors ${
-                    isSelected ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-muted/80"
+                    isSelected
+                      ? cmd.isDanger
+                        ? "bg-red-600 text-white font-semibold shadow-xs"
+                        : "bg-primary text-primary-foreground font-medium"
+                      : cmd.isDanger
+                      ? "text-red-600 dark:text-red-400 hover:bg-red-500/15 font-medium"
+                      : "text-foreground hover:bg-muted/80"
                   }`}
                 >
                   <div className="flex items-center space-x-2.5 truncate">
-                    <Icon className="w-4 h-4 shrink-0 opacity-80" />
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        cmd.isDanger && !isSelected ? "text-red-500" : "opacity-80"
+                      }`}
+                    />
                     <span className="truncate">{cmd.title}</span>
                     <span
-                      className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                        isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                      className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${
+                        isSelected
+                          ? "bg-black/20 text-white"
+                          : cmd.isDanger
+                          ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {cmd.category}
@@ -414,7 +440,9 @@ export const CommandPalette: React.FC = () => {
                     <kbd
                       className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
                         isSelected
-                          ? "bg-primary-foreground/20 border-primary-foreground/30 text-primary-foreground"
+                          ? "bg-black/20 border-white/30 text-white"
+                          : cmd.isDanger
+                          ? "bg-red-500/10 border-red-500/30 text-red-500 font-bold"
                           : "bg-muted border-border text-muted-foreground"
                       }`}
                     >

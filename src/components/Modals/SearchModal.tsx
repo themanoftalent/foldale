@@ -12,6 +12,7 @@ import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { api } from "../../services/tauriBridge";
 import { SearchQuery, SearchResultEntry } from "../../types";
 import { formatBytes, formatDate } from "../../utils/formatters";
+import { getFolderStyle } from "../../utils/folderColors";
 
 export const SearchModal: React.FC = () => {
   const {
@@ -173,7 +174,15 @@ export const SearchModal: React.FC = () => {
               >
                 <div className="flex items-center space-x-2 truncate flex-1 min-w-0">
                   {item.is_dir ? (
-                    <Folder className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />
+                    (() => {
+                      const folderStyle = getFolderStyle(item.name);
+                      const FolderIcon = folderStyle.Icon;
+                      return (
+                        <FolderIcon
+                          className={`w-3.5 h-3.5 ${folderStyle.strokeClass} ${folderStyle.fillClass} shrink-0`}
+                        />
+                      );
+                    })()
                   ) : (
                     <File className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   )}

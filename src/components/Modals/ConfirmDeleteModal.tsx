@@ -1,5 +1,5 @@
 import React from "react";
-import { Trash2, X } from "lucide-react";
+import { Trash2, AlertTriangle, X } from "lucide-react";
 
 interface ConfirmDeleteModalProps {
   paths: string[];
@@ -21,15 +21,22 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   const remaining = count - sampleNames.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="w-full max-w-md rounded-2xl border border-border/80 bg-card p-5 text-card-foreground shadow-2xl">
-        {/* Header */}
-        <div className="flex items-start justify-between pb-3 border-b border-border/60">
-          <div className="flex items-center gap-2 text-rose-500">
-            <Trash2 className="h-5 w-5" />
-            <h3 className="font-semibold text-sm text-foreground">
-              {permanent ? "Permanently Delete Items?" : "Move Items to Trash?"}
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="w-full max-w-md rounded-2xl border-2 border-red-500/50 bg-card p-5 text-card-foreground shadow-[0_0_50px_rgba(239,68,68,0.25)]">
+        {/* Header with Red Warning Accent */}
+        <div className="flex items-start justify-between pb-3 border-b border-red-500/20">
+          <div className="flex items-center gap-2.5 text-red-500">
+            <div className="p-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-500">
+              {permanent ? <AlertTriangle className="h-5 w-5 animate-pulse" /> : <Trash2 className="h-5 w-5" />}
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-foreground">
+                {permanent ? "Permanently Delete Items?" : "Move Items to Trash?"}
+              </h3>
+              <p className="text-[11px] text-red-600 dark:text-red-400 font-medium">
+                {permanent ? "Irreversible deletion warning" : "Warning: items will be moved to the Trash"}
+              </p>
+            </div>
           </div>
           <button
             onClick={onCancel}
@@ -39,17 +46,23 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           </button>
         </div>
 
-        {/* Content */}
+        {/* Content with Red Warning Box */}
         <div className="py-4 text-xs space-y-3">
-          <p className="text-foreground/90">
-            {permanent ? (
-              <span className="text-rose-500 font-semibold">
-                Are you sure you want to permanently delete {count} selected item(s)? This action cannot be undone.
-              </span>
-            ) : (
-              <span>Move {count} selected item(s) to the Trash?</span>
-            )}
-          </p>
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+            <div className="text-[11.5px] leading-relaxed">
+              {permanent ? (
+                <span>
+                  <strong>Warning:</strong> You are about to permanently delete <strong>{count}</strong> selected item(s).
+                  This operation cannot be undone.
+                </span>
+              ) : (
+                <span>
+                  <strong>Warning:</strong> Are you sure you want to move <strong>{count}</strong> selected item(s) to the Trash?
+                </span>
+              )}
+            </div>
+          </div>
 
           <div className="max-h-32 overflow-y-auto rounded-xl border border-border/70 bg-muted/50 p-3 text-[11px] space-y-1 font-mono text-muted-foreground">
             {sampleNames.map((name, i) => (
@@ -69,19 +82,25 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/60">
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium"
+            className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium border border-border/60"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
-              permanent
-                ? "bg-rose-600 hover:bg-rose-500 text-white"
-                : "bg-primary hover:bg-primary/90 text-white"
-            }`}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 active:bg-red-700 shadow-md shadow-red-500/30 transition-colors"
           >
-            {permanent ? "Delete Permanently" : "Move to Trash"}
+            {permanent ? (
+              <>
+                <AlertTriangle className="w-3.5 h-3.5 text-white" />
+                <span>Delete Permanently</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5 text-white" />
+                <span>Move to Trash</span>
+              </>
+            )}
           </button>
         </div>
       </div>

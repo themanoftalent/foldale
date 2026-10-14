@@ -81,6 +81,7 @@ export const Sidebar: React.FC = () => {
         { label: "Music", path: systemLocations.music, icon: Music, color: "text-rose-500" },
         { label: "Videos", path: systemLocations.videos, icon: Video, color: "text-purple-500" },
         { label: "Macintosh HD", path: systemLocations.root, icon: HardDrive, color: "text-slate-500" },
+        { label: "Trash", path: `${systemLocations.home}/.Trash`, icon: Trash2, color: "text-red-500" },
       ]
     : [];
 
@@ -211,9 +212,9 @@ export const Sidebar: React.FC = () => {
                     <button
                       onClick={() => removeBookmark(b.id)}
                       title="Remove bookmark"
-                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-destructive transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-600 hover:bg-red-500/20 rounded transition-all"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
                     </button>
                   </div>
                 );

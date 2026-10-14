@@ -15,6 +15,7 @@ import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { api } from "../../services/tauriBridge";
 import { DetailedFileInfo, DirSizeResult } from "../../types";
 import { formatBytes, formatDate } from "../../utils/formatters";
+import { getFolderStyle } from "../../utils/folderColors";
 
 export const PropertiesModal: React.FC = () => {
   const { propertiesPath, setPropertiesPath } = useFileManagerStore();
@@ -93,7 +94,15 @@ export const PropertiesModal: React.FC = () => {
         <div className="h-12 px-4 border-b border-border bg-muted/40 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2 truncate">
             {info?.is_dir ? (
-              <Folder className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />
+              (() => {
+                const folderStyle = getFolderStyle(info?.name || "Folder");
+                const FolderIcon = folderStyle.Icon;
+                return (
+                  <FolderIcon
+                    className={`w-4 h-4 ${folderStyle.strokeClass} ${folderStyle.fillClass} shrink-0`}
+                  />
+                );
+              })()
             ) : (
               <File className="w-4 h-4 text-primary shrink-0" />
             )}

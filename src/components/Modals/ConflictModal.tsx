@@ -84,8 +84,8 @@ export const ConflictModal: React.FC<ConflictModalProps> = ({
             </div>
           </div>
 
-          <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-            <span className="text-amber-500 font-semibold">Safe replace:</span>
+          <div className="text-[11px] p-2.5 rounded-xl bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 flex items-center gap-2">
+            <span className="font-bold flex items-center gap-1">⚠️ Warning:</span>
             <span>If replaced, the existing item will be moved to the Trash.</span>
           </div>
 
@@ -124,9 +124,9 @@ export const ConflictModal: React.FC<ConflictModalProps> = ({
           </button>
           <button
             onClick={() => handleSelectPolicy("replace")}
-            className="px-3.5 py-1.5 rounded-lg text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-xs transition-colors"
+            className="px-3.5 py-1.5 rounded-lg text-xs bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold shadow-xs transition-colors"
           >
-            Replace
+            Replace (to Trash)
           </button>
         </div>
       </div>

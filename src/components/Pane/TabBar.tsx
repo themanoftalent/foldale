@@ -1,7 +1,8 @@
 import React from "react";
-import { Plus, X, Folder } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { PaneId } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
+import { getFolderStyle } from "../../utils/folderColors";
 
 interface TabBarProps {
   paneId: PaneId;
@@ -39,7 +40,15 @@ export const TabBar: React.FC<TabBarProps> = ({ paneId }) => {
                   : "bg-transparent border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               }`}
             >
-              <Folder className={`w-3.5 h-3.5 shrink-0 ${isActive && isPaneActive ? "text-primary" : "text-muted-foreground"}`} />
+              {(() => {
+                const folderStyle = getFolderStyle(tab.title || "Folder");
+                const FolderIcon = folderStyle.Icon;
+                return (
+                  <FolderIcon
+                    className={`w-3.5 h-3.5 shrink-0 ${folderStyle.strokeClass} ${folderStyle.fillClass}`}
+                  />
+                );
+              })()}
               <span className="truncate flex-1 text-[11px] tracking-tight">{tab.title || "Folder"}</span>
 
               {tabs.length > 1 && (
