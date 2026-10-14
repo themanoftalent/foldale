@@ -26,6 +26,7 @@ export function useKeyboardShortcuts() {
     setNewFolderOpen,
     setBatchRenameOpen,
     undoLastOperation,
+    setFolderCustomizerTarget,
     leftPane,
     rightPane,
   } = useFileManagerStore();
@@ -153,8 +154,27 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Folder Color & Badge Customizer: ⌘⌥C / Ctrl+Alt+C
+      if (cmdOrCtrl && e.altKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        const entries = paneState.listing?.entries || [];
+        const target =
+          selectedPaths.length > 0
+            ? entries.find((item) => selectedPaths.includes(item.path) && item.is_dir)
+            : null;
+        if (target) {
+          setFolderCustomizerTarget({ name: target.name, path: target.path });
+        } else if (currentPath) {
+          setFolderCustomizerTarget({
+            name: currentPath.split("/").pop() || "Folder",
+            path: currentPath,
+          });
+        }
+        return;
+      }
+
       // Copy: ⌘C / Ctrl+C
-      if (cmdOrCtrl && (e.key === "c" || e.key === "C")) {
+      if (cmdOrCtrl && !e.altKey && (e.key === "c" || e.key === "C")) {
         e.preventDefault();
         copySelection();
         return;

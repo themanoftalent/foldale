@@ -37,6 +37,13 @@ export interface PendingDelete {
   permanent: boolean;
 }
 
+export interface CustomFolderStyle {
+  color: string;
+  text?: string;
+  textColor?: string;
+  icon?: string;
+}
+
 interface FileManagerStore {
   // Global View Options
   activePane: PaneId;
@@ -72,6 +79,8 @@ interface FileManagerStore {
   colorfulFolders: boolean;
   confirmTrashPrompt: boolean;
   defaultConflictPolicy: ConflictPolicy | "ask";
+  customFolderStyles: Record<string, CustomFolderStyle>;
+  folderCustomizerTarget: { name: string; path: string } | null;
 
   // Safety & Conflict Management
   pendingConflict: PendingConflict | null;
@@ -83,8 +92,8 @@ interface FileManagerStore {
   setActivePane: (pane: PaneId) => void;
   toggleActivePane: () => void;
   setLayoutMode: (mode: LayoutMode) => void;
-  setShowHiddenFiles: (show: boolean) => void;
-  toggleHiddenFiles: () => void;
+  setShowHiddenFiles: (show: boolean) => Promise<void>;
+  toggleHiddenFiles: () => Promise<void>;
   setTheme: (theme: "dark" | "light" | "system") => void;
   setAccentColor: (accent: "amber" | "blue" | "violet" | "emerald" | "rose") => void;
   setDensity: (density: "compact" | "normal" | "relaxed") => void;
@@ -144,6 +153,9 @@ interface FileManagerStore {
   setColorfulFolders: (enabled: boolean) => void;
   setConfirmTrashPrompt: (enabled: boolean) => void;
   setDefaultConflictPolicy: (policy: ConflictPolicy | "ask") => void;
+  setFolderCustomizerTarget: (target: { name: string; path: string } | null) => void;
+  setFolderCustomStyle: (path: string, style: CustomFolderStyle) => Promise<void>;
+  removeFolderCustomStyle: (path: string) => Promise<void>;
 }
 
 const initialTab = (id: string, path: string): TabItem => ({
@@ -201,6 +213,8 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   colorfulFolders: true,
   confirmTrashPrompt: false,
   defaultConflictPolicy: "ask",
+  customFolderStyles: {},
+  folderCustomizerTarget: null,
 
   pendingConflict: null,
   pendingDelete: null,
@@ -234,6 +248,18 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
       if (settings.defaultConflictPolicy) {
         set({ defaultConflictPolicy: settings.defaultConflictPolicy as any });
       }
+
+      // Load custom folder styles
+      const customStyles: Record<string, CustomFolderStyle> = {};
+      for (const [k, v] of Object.entries(settings)) {
+        if (k.startsWith("folder_custom_") && v) {
+          try {
+            const folderPath = k.slice("folder_custom_".length);
+            customStyles[folderPath] = JSON.parse(v);
+          } catch {}
+        }
+      }
+      set({ customFolderStyles: customStyles });
 
       const locations = await api.getSystemLocations();
       const drives = await api.getMountedDrives();
@@ -272,15 +298,14 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     set({ layoutMode: mode });
     api.setSetting("layoutMode", mode);
   },
-  setShowHiddenFiles: (show) => {
+  setShowHiddenFiles: async (show) => {
     set({ showHiddenFiles: show });
     api.setSetting("showHiddenFiles", String(show));
-    get().refreshPane("left");
-    get().refreshPane("right");
+    await Promise.all([get().refreshPane("left"), get().refreshPane("right")]);
   },
-  toggleHiddenFiles: () => {
+  toggleHiddenFiles: async () => {
     const show = !get().showHiddenFiles;
-    get().setShowHiddenFiles(show);
+    await get().setShowHiddenFiles(show);
   },
   setTheme: (theme) => {
     set({ theme });
@@ -312,7 +337,7 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     });
 
     try {
-      const listing = await api.listDirectory(path, state.showHiddenFiles);
+      const listing = await api.listDirectory(path, get().showHiddenFiles);
       const canonicalPath = listing.current_path;
       const title = canonicalPath.split("/").pop() || "Root";
 
@@ -410,9 +435,11 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   refreshPane: async (pane) => {
     const state = get();
     const paneKey = pane === "left" ? "leftPane" : "rightPane";
-    const currentPath = state[paneKey].listing?.current_path;
-    if (currentPath) {
-      await get().navigateTo(pane, currentPath, false);
+    const p = state[paneKey];
+    const activeTab = p.tabs.find((t) => t.id === p.activeTabId);
+    const targetPath = activeTab?.path || p.listing?.current_path;
+    if (targetPath) {
+      await get().navigateTo(pane, targetPath, false);
     }
   },
 
@@ -822,5 +849,28 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   setDefaultConflictPolicy: (policy) => {
     set({ defaultConflictPolicy: policy });
     api.setSetting("defaultConflictPolicy", policy);
+  },
+  setFolderCustomizerTarget: (target) => set({ folderCustomizerTarget: target }),
+  setFolderCustomStyle: async (path, style) => {
+    set((s) => ({
+      customFolderStyles: { ...s.customFolderStyles, [path]: style },
+    }));
+    try {
+      await api.setSetting("folder_custom_" + path, JSON.stringify(style));
+    } catch (e) {
+      console.error("Failed to save folder style:", e);
+    }
+  },
+  removeFolderCustomStyle: async (path) => {
+    set((s) => {
+      const next = { ...s.customFolderStyles };
+      delete next[path];
+      return { customFolderStyles: next };
+    });
+    try {
+      await api.setSetting("folder_custom_" + path, "");
+    } catch (e) {
+      console.error("Failed to remove folder style:", e);
+    }
   },
 }));

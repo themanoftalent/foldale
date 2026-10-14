@@ -24,7 +24,11 @@ export const api = {
   // Directory & files
   listDirectory: async (path: string, showHidden: boolean): Promise<DirectoryListing> => {
     if (isTauriEnvironment()) {
-      return await invoke<DirectoryListing>("list_directory", { path, showHidden });
+      return await invoke<DirectoryListing>("list_directory", {
+        path,
+        showHidden,
+        show_hidden: showHidden,
+      });
     }
     // Web fallback for testing
     return {

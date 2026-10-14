@@ -144,13 +144,14 @@ export const Header: React.FC = () => {
         <button
           onClick={toggleHiddenFiles}
           title={showHiddenFiles ? "Hide Hidden Files (⌘.)" : "Show Hidden Files (⌘.)"}
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`h-7 px-2.5 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-all border ${
             showHiddenFiles
-              ? "text-primary bg-primary/10 hover:bg-primary/20"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+              ? "bg-primary text-primary-foreground border-primary shadow-xs font-semibold"
+              : "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60"
           }`}
         >
-          {showHiddenFiles ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+          {showHiddenFiles ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+          <span className="text-[11px]">{showHiddenFiles ? "Hidden: On" : "Hidden: Off"}</span>
         </button>
 
         <button

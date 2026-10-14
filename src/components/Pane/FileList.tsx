@@ -24,6 +24,7 @@ import {
   Check,
   FolderArchive,
   AlertTriangle,
+  Palette,
 } from "lucide-react";
 import { FileEntry, PaneId, SortField } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
@@ -60,6 +61,8 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     setPendingConflict,
     setUndoToastMessage,
     colorfulFolders,
+    customFolderStyles,
+    setFolderCustomizerTarget,
   } = useFileManagerStore();
 
   const paneState = paneId === "left" ? leftPane : rightPane;
@@ -374,6 +377,40 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       return <Link2 className={`${sizeClass} text-cyan-500 shrink-0`} />;
     }
     if (item.is_dir) {
+      const customStyle = customFolderStyles[item.path];
+      if (customStyle) {
+        return (
+          <div className={`relative inline-flex items-center justify-center shrink-0 ${sizeClass}`}>
+            <Folder
+              className={`${sizeClass} shrink-0 transition-transform`}
+              style={{
+                color: customStyle.color,
+                fill: `${customStyle.color}35`,
+              }}
+            />
+            {customStyle.icon ? (
+              <span
+                className={`absolute select-none pointer-events-none ${
+                  size === "lg" ? "text-base pt-1" : size === "md" ? "text-[10px]" : "text-[8px]"
+                }`}
+              >
+                {customStyle.icon}
+              </span>
+            ) : customStyle.text && size === "lg" ? (
+              <span
+                className="absolute bottom-1 px-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider select-none pointer-events-none shadow-xs border border-white/20"
+                style={{
+                  backgroundColor: customStyle.color,
+                  color: customStyle.textColor || "#ffffff",
+                }}
+              >
+                {customStyle.text.slice(0, 5)}
+              </span>
+            ) : null}
+          </div>
+        );
+      }
+
       const folderStyle = getFolderStyle(item.name, colorfulFolders);
       const FolderIcon = folderStyle.Icon;
       return (
@@ -565,7 +602,21 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                             className="h-5 px-1 bg-background border border-primary text-foreground text-xs rounded outline-none w-full font-sans"
                           />
                         ) : (
-                          <span className="truncate text-[11.5px] tracking-tight">{item.name}</span>
+                          <div className="flex items-center space-x-1.5 truncate">
+                            <span className="truncate text-[11.5px] tracking-tight">{item.name}</span>
+                            {item.is_dir && customFolderStyles[item.path]?.text && (
+                              <span
+                                className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase tracking-wider shadow-2xs border shrink-0 leading-tight"
+                                style={{
+                                  backgroundColor: `${customFolderStyles[item.path].color}25`,
+                                  color: customFolderStyles[item.path].color,
+                                  borderColor: `${customFolderStyles[item.path].color}50`,
+                                }}
+                              >
+                                {customFolderStyles[item.path].text}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -622,6 +673,18 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
               >
                 {renderIcon(item)}
                 <span className="truncate text-[11.5px]">{item.name}</span>
+                {item.is_dir && customFolderStyles[item.path]?.text && (
+                  <span
+                    className="px-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider border shrink-0 leading-tight"
+                    style={{
+                      backgroundColor: `${customFolderStyles[item.path].color}25`,
+                      color: customFolderStyles[item.path].color,
+                      borderColor: `${customFolderStyles[item.path].color}50`,
+                    }}
+                  >
+                    {customFolderStyles[item.path].text}
+                  </span>
+                )}
               </div>
             );
           })}
@@ -713,6 +776,23 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                 <FolderArchive className="w-3.5 h-3.5" />
                 <span>Reveal in Native OS</span>
               </button>
+
+              {contextMenu.targetItem.is_dir && (
+                <button
+                  onClick={() => {
+                    const target = contextMenu.targetItem!;
+                    setContextMenu((p) => ({ ...p, visible: false }));
+                    setFolderCustomizerTarget({ name: target.name, path: target.path });
+                  }}
+                  className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors text-primary font-medium"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Palette className="w-3.5 h-3.5 text-primary" />
+                    <span>Folder Color & Badge...</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-mono">⌘⌥C</span>
+                </button>
+              )}
 
               <div className="h-[1px] bg-border/40 my-1" />
 

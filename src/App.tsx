@@ -14,6 +14,7 @@ import { ConflictModal } from "./components/Modals/ConflictModal";
 import { ConfirmDeleteModal } from "./components/Modals/ConfirmDeleteModal";
 import { UndoToast } from "./components/Modals/UndoToast";
 import { SettingsModal } from "./components/Modals/SettingsModal";
+import { FolderCustomizerModal } from "./components/Modals/FolderCustomizerModal";
 
 export const App: React.FC = () => {
   const {
@@ -106,6 +107,7 @@ export const App: React.FC = () => {
       <SearchModal />
       <NewItemModal />
       <SettingsModal />
+      <FolderCustomizerModal />
 
       {/* File Conflict Resolution Dialog */}
       {pendingConflict && (
