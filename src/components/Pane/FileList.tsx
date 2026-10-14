@@ -25,6 +25,7 @@ import {
   FolderArchive,
   AlertTriangle,
   Palette,
+  ChevronRight,
 } from "lucide-react";
 import { FileEntry, PaneId, SortField } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
@@ -63,6 +64,8 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     colorfulFolders,
     customFolderStyles,
     setFolderCustomizerTarget,
+    columnNavigation,
+    layoutMode,
   } = useFileManagerStore();
 
   const paneState = paneId === "left" ? leftPane : rightPane;
@@ -76,6 +79,10 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
   const sortDirection = currentTab?.sortDirection || "asc";
 
   const isPaneActive = activePane === paneId;
+
+  // Track adjacent right pane folder path to highlight active column folder
+  const rightActiveTab = rightPane.tabs.find((t) => t.id === rightPane.activeTabId);
+  const rightCurrentPath = rightActiveTab?.path || rightPane.listing?.current_path || "";
 
   // Renaming state
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -194,6 +201,17 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     const multi = e.metaKey || e.ctrlKey;
     const range = e.shiftKey;
     selectItem(paneId, item.path, multi, range, orderedPaths);
+
+    // Automatic folder navigation in adjacent right pane (Finder column style)
+    if (columnNavigation && !multi && !range && item.is_dir) {
+      if (paneId === "left" && layoutMode.startsWith("dual")) {
+        // Single-click on a folder in the left pane opens its contents in the right pane
+        navigateTo("right", item.path, true);
+      } else {
+        // Rightmost pane or single pane: navigate within current pane
+        navigateTo(paneId, item.path, true);
+      }
+    }
   };
 
   const handleItemDoubleClick = async (item: FileEntry) => {
@@ -258,12 +276,43 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
         const nextItem = entries[nextIndex];
         selectItem(paneId, nextItem.path, e.shiftKey, false, orderedPaths);
         rowRefs.current[nextItem.path]?.scrollIntoView({ block: "nearest" });
+
+        // Dynamically update adjacent right pane on arrow navigation
+        if (columnNavigation && !e.shiftKey && nextItem.is_dir) {
+          if (paneId === "left" && layoutMode.startsWith("dual")) {
+            navigateTo("right", nextItem.path, true);
+          }
+        }
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         const prevIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
         const prevItem = entries[prevIndex];
         selectItem(paneId, prevItem.path, e.shiftKey, false, orderedPaths);
         rowRefs.current[prevItem.path]?.scrollIntoView({ block: "nearest" });
+
+        // Dynamically update adjacent right pane on arrow navigation
+        if (columnNavigation && !e.shiftKey && prevItem.is_dir) {
+          if (paneId === "left" && layoutMode.startsWith("dual")) {
+            navigateTo("right", prevItem.path, true);
+          }
+        }
+      } else if (e.key === "ArrowRight") {
+        // Finder column navigation: move focus into the adjacent right pane
+        if (paneId === "left" && layoutMode.startsWith("dual")) {
+          e.preventDefault();
+          setActivePane("right");
+          const rEntries = rightPane.listing?.entries || [];
+          if (rEntries.length > 0) {
+            selectItem("right", rEntries[0].path, false, false, rEntries.map((it) => it.path));
+            rowRefs.current[rEntries[0].path]?.scrollIntoView({ block: "nearest" });
+          }
+        }
+      } else if (e.key === "ArrowLeft") {
+        // Finder column navigation: move focus back to left pane
+        if (paneId === "right" && layoutMode.startsWith("dual")) {
+          e.preventDefault();
+          setActivePane("left");
+        }
       } else if (e.key === "Home") {
         e.preventDefault();
         const first = entries[0];
@@ -277,8 +326,16 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (currentIndex >= 0) {
-          handleItemDoubleClick(entries[currentIndex]);
+          const item = entries[currentIndex];
+          if (item.is_dir) {
+            navigateTo(paneId, item.path, true);
+          } else {
+            handleItemDoubleClick(item);
+          }
         }
+      } else if ((e.metaKey || e.ctrlKey || e.altKey) && e.key === "ArrowUp") {
+        e.preventDefault();
+        navigateUp(paneId);
       } else if (e.key === "F2") {
         e.preventDefault();
         if (currentIndex >= 0) {
@@ -298,6 +355,12 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     selectItem,
     handleStartRename,
     orderedPaths,
+    columnNavigation,
+    layoutMode,
+    navigateTo,
+    navigateUp,
+    setActivePane,
+    rightPane.listing?.entries,
   ]);
 
   // Drag and Drop handlers
@@ -543,6 +606,14 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                 const isSelected = selectedPaths.includes(item.path);
                 const isRenaming = renamingPath === item.path;
                 const isTargetDrop = dropTargetFolder === item.path;
+                const isDisplayedInAdjacent = Boolean(
+                  columnNavigation &&
+                  paneId === "left" &&
+                  layoutMode.startsWith("dual") &&
+                  item.is_dir &&
+                  rightCurrentPath &&
+                  (rightCurrentPath === item.path || rightCurrentPath.startsWith(item.path + "/"))
+                );
 
                 return (
                   <div
@@ -572,9 +643,13 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                       handleItemDoubleClick(item);
                     }}
                     onContextMenu={(e) => handleContextMenu(e, item)}
-                    className={`h-7 px-2.5 rounded-lg flex items-center text-xs transition-colors cursor-pointer border ${
+                    className={`group h-7 px-2.5 rounded-lg flex items-center text-xs transition-all cursor-pointer border ${
                       isTargetDrop
                         ? "bg-primary/20 border-primary ring-1 ring-primary"
+                        : isDisplayedInAdjacent
+                        ? isPaneActive
+                          ? "bg-primary/20 border-primary/70 text-primary font-semibold shadow-xs ring-1 ring-primary/40"
+                          : "bg-primary/10 border-primary/40 text-primary font-medium"
                         : isSelected
                         ? isPaneActive
                           ? "bg-primary/15 border-primary/50 text-primary font-semibold shadow-xs"
@@ -630,9 +705,20 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                         {formatDate(item.modified)}
                       </div>
 
-                      {/* Permissions column */}
-                      <div className="col-span-1 text-right text-[9.5px] text-muted-foreground/60 font-mono hidden md:block truncate">
-                        {item.permissions.slice(1, 4)}
+                      {/* Permissions / Adjacent Column Indicator */}
+                      <div className="col-span-1 flex items-center justify-end text-[9.5px] font-mono">
+                        {isDisplayedInAdjacent ? (
+                          <div
+                            className="flex items-center text-primary bg-primary/20 p-0.5 rounded shadow-2xs"
+                            title="Contents opened in adjacent right pane"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5 text-primary stroke-[2.5]" />
+                          </div>
+                        ) : item.is_dir ? (
+                          <ChevronRight className="w-3 h-3 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        ) : (
+                          <span className="text-muted-foreground/60 hidden md:inline truncate">{item.permissions.slice(1, 4)}</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -648,6 +734,15 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
         <div className="flex-1 overflow-y-auto p-2 flex flex-wrap content-start gap-1">
           {entries.map((item) => {
             const isSelected = selectedPaths.includes(item.path);
+            const isDisplayedInAdjacent = Boolean(
+              columnNavigation &&
+              paneId === "left" &&
+              layoutMode.startsWith("dual") &&
+              item.is_dir &&
+              rightCurrentPath &&
+              (rightCurrentPath === item.path || rightCurrentPath.startsWith(item.path + "/"))
+            );
+
             return (
               <div
                 key={item.path}
@@ -663,8 +758,12 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   handleItemDoubleClick(item);
                 }}
                 onContextMenu={(e) => handleContextMenu(e, item)}
-                className={`h-7 px-2.5 rounded-lg flex items-center space-x-2 text-xs cursor-pointer w-48 truncate transition-colors border ${
-                  isSelected
+                className={`group h-7 px-2.5 rounded-lg flex items-center space-x-2 text-xs cursor-pointer w-48 truncate transition-all border ${
+                  isDisplayedInAdjacent
+                    ? isPaneActive
+                      ? "bg-primary/20 border-primary/70 text-primary font-semibold shadow-xs ring-1 ring-primary/40"
+                      : "bg-primary/10 border-primary/40 text-primary font-medium"
+                    : isSelected
                     ? isPaneActive
                       ? "bg-primary/15 border-primary/50 text-primary font-semibold shadow-xs"
                       : "bg-muted border-border/80 text-foreground font-medium"
@@ -685,6 +784,11 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                     {customFolderStyles[item.path].text}
                   </span>
                 )}
+                {isDisplayedInAdjacent ? (
+                  <ChevronRight className="w-3.5 h-3.5 text-primary ml-auto shrink-0" />
+                ) : item.is_dir ? (
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0" />
+                ) : null}
               </div>
             );
           })}
@@ -696,6 +800,15 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
         <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           {entries.map((item) => {
             const isSelected = selectedPaths.includes(item.path);
+            const isDisplayedInAdjacent = Boolean(
+              columnNavigation &&
+              paneId === "left" &&
+              layoutMode.startsWith("dual") &&
+              item.is_dir &&
+              rightCurrentPath &&
+              (rightCurrentPath === item.path || rightCurrentPath.startsWith(item.path + "/"))
+            );
+
             return (
               <div
                 key={item.path}
@@ -711,14 +824,23 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   handleItemDoubleClick(item);
                 }}
                 onContextMenu={(e) => handleContextMenu(e, item)}
-                className={`flex flex-col items-center justify-center p-3 rounded-xl cursor-pointer transition-all border ${
-                  isSelected
+                className={`relative flex flex-col items-center justify-center p-3 rounded-xl cursor-pointer transition-all border ${
+                  isDisplayedInAdjacent
+                    ? isPaneActive
+                      ? "bg-primary/20 border-primary/70 ring-2 ring-primary/40 text-primary font-semibold shadow-sm"
+                      : "bg-primary/10 border-primary/40 text-primary font-medium"
+                    : isSelected
                     ? isPaneActive
                       ? "bg-primary/15 border-primary/60 text-primary font-semibold shadow-sm"
                       : "bg-muted border-border/80 text-foreground font-medium"
                     : "border-transparent hover:bg-muted/70 text-foreground"
                 } ${item.is_hidden ? "opacity-50" : ""}`}
               >
+                {isDisplayedInAdjacent && (
+                  <div className="absolute top-1.5 right-1.5 px-1 py-0.2 rounded text-[8px] bg-primary text-primary-foreground font-mono font-bold flex items-center shadow-xs">
+                    OPEN →
+                  </div>
+                )}
                 <div className="mb-2 mt-1">{renderIcon(item, "lg")}</div>
                 <span className="text-[11px] text-center truncate max-w-full font-medium" title={item.name}>
                   {item.name}

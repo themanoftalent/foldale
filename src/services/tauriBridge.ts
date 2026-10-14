@@ -309,14 +309,19 @@ export const api = {
     if (isTauriEnvironment()) {
       return await invoke<string | null>("get_setting", { key });
     }
-    return localStorage.getItem(`foldale_${key}`);
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(`foldale_${key}`);
+    }
+    return null;
   },
 
   setSetting: async (key: string, value: string): Promise<void> => {
     if (isTauriEnvironment()) {
       await invoke("set_setting", { key, value });
     }
-    localStorage.setItem(`foldale_${key}`, value);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(`foldale_${key}`, value);
+    }
   },
 
   getAllSettings: async (): Promise<Record<string, string>> => {
@@ -324,10 +329,12 @@ export const api = {
       return await invoke<Record<string, string>>("get_all_settings");
     }
     const res: Record<string, string> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith("foldale_")) {
-        res[k.replace("foldale_", "")] = localStorage.getItem(k) || "";
+    if (typeof localStorage !== "undefined") {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("foldale_")) {
+          res[k.replace("foldale_", "")] = localStorage.getItem(k) || "";
+        }
       }
     }
     return res;

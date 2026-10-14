@@ -30,6 +30,8 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
     setTabFilter,
     setTabViewMode,
     setActivePane,
+    columnNavigation,
+    layoutMode,
   } = useFileManagerStore();
 
   const paneState = paneId === "left" ? leftPane : rightPane;
@@ -154,6 +156,22 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
             ))}
           </div>
         )}
+
+        {columnNavigation && paneId === "right" && layoutMode.startsWith("dual") && (() => {
+          const leftActiveTab = leftPane.tabs.find((t) => t.id === leftPane.activeTabId);
+          const leftPath = leftActiveTab?.path || leftPane.listing?.current_path || "";
+          const isChild = leftPath && currentPath.startsWith(leftPath) && currentPath !== leftPath;
+          if (!isChild) return null;
+          return (
+            <div
+              className="hidden lg:flex items-center space-x-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono shrink-0 select-none ml-2"
+              title={`Viewing subfolder from Left Pane: ${leftActiveTab?.title || "Folder"}`}
+            >
+              <span className="opacity-70">←</span>
+              <span className="truncate max-w-[85px]">{leftActiveTab?.title || "Left"}</span>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Inline Filter */}

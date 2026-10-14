@@ -45,6 +45,8 @@ export const SettingsModal: React.FC = () => {
     setDefaultConflictPolicy,
     sidebarCollapsed,
     toggleSidebar,
+    columnNavigation,
+    setColumnNavigation,
     bookmarks,
   } = useFileManagerStore();
 
@@ -431,6 +433,28 @@ export const SettingsModal: React.FC = () => {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Finder-Style Column Navigation */}
+                <div className="p-3.5 rounded-xl border border-border/70 bg-muted/30 flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-foreground text-xs flex items-center space-x-1.5">
+                      <span>Finder Column-Style Adjacent Navigation</span>
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono font-bold bg-primary/20 text-primary">New</span>
+                    </div>
+                    <div className="text-muted-foreground text-[11px] mt-0.5 max-w-sm">
+                      Clicking or arrow-browsing a folder in the left pane automatically opens its contents in the pane immediately to its right.
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={columnNavigation}
+                      onChange={(e) => setColumnNavigation(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
                 </div>
 
                 {/* Show Hidden Files by Default */}

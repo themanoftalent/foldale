@@ -131,6 +131,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Navigate Up to Parent Directory: ⌘↑ / Alt+↑
+      if ((cmdOrCtrl || e.altKey) && e.key === "ArrowUp") {
+        e.preventDefault();
+        navigateUp(activePane);
+        return;
+      }
+
       // New Folder: ⌘⇧N / Ctrl+Shift+N
       if (cmdOrCtrl && e.shiftKey && (e.key === "N" || e.key === "n")) {
         e.preventDefault();

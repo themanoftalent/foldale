@@ -53,6 +53,7 @@ interface FileManagerStore {
   accentColor: "amber" | "blue" | "violet" | "emerald" | "rose";
   density: "compact" | "normal" | "relaxed";
   sidebarCollapsed: boolean;
+  columnNavigation: boolean;
 
   // System & Environment
   systemLocations: SystemLocations | null;
@@ -98,6 +99,7 @@ interface FileManagerStore {
   setAccentColor: (accent: "amber" | "blue" | "violet" | "emerald" | "rose") => void;
   setDensity: (density: "compact" | "normal" | "relaxed") => void;
   toggleSidebar: () => void;
+  setColumnNavigation: (enabled: boolean) => void;
 
   // Tab & Navigation Actions
   navigateTo: (pane: PaneId, path: string, addToHistory?: boolean) => Promise<void>;
@@ -179,6 +181,7 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   accentColor: "blue",
   density: "normal",
   sidebarCollapsed: false,
+  columnNavigation: true,
 
   systemLocations: null,
   mountedDrives: [],
@@ -247,6 +250,11 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
       }
       if (settings.defaultConflictPolicy) {
         set({ defaultConflictPolicy: settings.defaultConflictPolicy as any });
+      }
+      if (settings.columnNavigation !== undefined) {
+        set({ columnNavigation: settings.columnNavigation === "true" });
+      } else {
+        set({ columnNavigation: true });
       }
 
       // Load custom folder styles
@@ -320,6 +328,10 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     api.setSetting("density", density);
   },
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  setColumnNavigation: (enabled) => {
+    set({ columnNavigation: enabled });
+    api.setSetting("columnNavigation", String(enabled));
+  },
 
   navigateTo: async (pane, path, addToHistory = true) => {
     const state = get();
