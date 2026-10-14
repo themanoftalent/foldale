@@ -43,6 +43,8 @@ export interface CustomFolderStyle {
   text?: string;
   textColor?: string;
   icon?: string;
+  fontFamily?: string;
+  fontSize?: number;
 }
 
 interface FileManagerStore {
@@ -874,7 +876,14 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
       console.error("Failed to save folder style to db:", e);
     }
     try {
-      const svg = generateFolderSvgString(style.color, style.text, style.textColor, style.icon);
+      const svg = generateFolderSvgString(
+        style.color,
+        style.text,
+        style.textColor,
+        style.icon,
+        style.fontFamily,
+        style.fontSize
+      );
       await api.setNativeFolderIcon(path, svg);
     } catch (e) {
       console.error("Failed to set native macOS folder icon:", e);

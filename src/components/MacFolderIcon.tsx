@@ -1,10 +1,46 @@
 import React from "react";
 
+export interface FontOption {
+  id: string;
+  name: string;
+  css: string;
+}
+
+export const FONT_OPTIONS: FontOption[] = [
+  {
+    id: "sans",
+    name: "SF Pro",
+    css: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif",
+  },
+  {
+    id: "mono",
+    name: "SF Mono",
+    css: "'SF Mono', Monaco, Menlo, Consolas, 'Courier New', monospace",
+  },
+  {
+    id: "serif",
+    name: "New York",
+    css: "'New York', Georgia, 'Times New Roman', serif",
+  },
+  {
+    id: "rounded",
+    name: "Rounded",
+    css: "'ui-rounded', 'SF Pro Rounded', 'Comic Sans MS', -apple-system, sans-serif",
+  },
+  {
+    id: "heavy",
+    name: "Heavy",
+    css: "Impact, 'Arial Black', -apple-system, sans-serif",
+  },
+];
+
 export interface MacFolderIconProps {
   color?: string;
   text?: string;
   textColor?: string;
   icon?: string;
+  fontFamily?: string;
+  fontSize?: number; // scale multiplier, default 1.0 (0.6 - 1.5)
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   className?: string;
 }
@@ -14,6 +50,8 @@ export const MacFolderIcon: React.FC<MacFolderIconProps> = ({
   text,
   textColor = "#ffffff",
   icon,
+  fontFamily = "sans",
+  fontSize = 1.0,
   size = "sm",
   className = "",
 }) => {
@@ -26,11 +64,16 @@ export const MacFolderIcon: React.FC<MacFolderIconProps> = ({
     "2xl": { width: 120, height: 100 },
   }[size];
 
-  // Font sizing based on text length
+  // Font resolution
+  const fontObj = FONT_OPTIONS.find((f) => f.id === fontFamily) || FONT_OPTIONS[0];
+
+  // Font sizing based on text length and custom scale multiplier
   const cleanText = (text || "").trim().toUpperCase();
   const textLen = cleanText.length;
-  const fontSize =
+  const baseFontSize =
     textLen <= 3 ? 21 : textLen <= 4 ? 17 : textLen <= 5 ? 14 : textLen <= 6 ? 12 : 10;
+  const scale = fontSize && fontSize > 0 ? fontSize : 1.0;
+  const computedFontSize = Math.round(baseFontSize * scale);
 
   // Unique gradient IDs to prevent collisions when multiple icons are rendered
   const idSuffix = React.useId().replace(/:/g, "_");
@@ -108,9 +151,9 @@ export const MacFolderIcon: React.FC<MacFolderIconProps> = ({
           y="50.5"
           textAnchor="middle"
           dominantBaseline="central"
-          fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+          fontFamily={fontObj.css}
           fontWeight="800"
-          fontSize={fontSize}
+          fontSize={computedFontSize}
           fill={textColor || "#ffffff"}
           letterSpacing="0.5px"
         >
@@ -129,18 +172,23 @@ export function generateFolderSvgString(
   color = "#007aff",
   text?: string,
   textColor = "#ffffff",
-  icon?: string
+  icon?: string,
+  fontFamily = "sans",
+  fontSize = 1.0
 ): string {
   const cleanText = (text || "").trim().toUpperCase();
   const textLen = cleanText.length;
-  const fontSize =
+  const baseSvgFontSize =
     textLen <= 3 ? 104 : textLen <= 4 ? 86 : textLen <= 5 ? 72 : textLen <= 6 ? 62 : 50;
+  const scale = fontSize && fontSize > 0 ? fontSize : 1.0;
+  const computedSvgFontSize = Math.round(baseSvgFontSize * scale);
+  const fontObj = FONT_OPTIONS.find((f) => f.id === fontFamily) || FONT_OPTIONS[0];
 
   let stamp = "";
   if (icon) {
     stamp = `<text x="256" y="302" text-anchor="middle" dominant-baseline="central" font-size="120">${icon}</text>`;
   } else if (cleanText) {
-    stamp = `<text x="256" y="300" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="${fontSize}" fill="${textColor}" letter-spacing="1.5">${cleanText}</text>`;
+    stamp = `<text x="256" y="300" text-anchor="middle" dominant-baseline="central" font-family="${fontObj.css.replace(/"/g, "'")}" font-weight="700" font-size="${computedSvgFontSize}" fill="${textColor}" letter-spacing="1.5">${cleanText}</text>`;
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">

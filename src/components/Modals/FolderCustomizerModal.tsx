@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Palette, Type, Sparkles, X, Check, RotateCcw } from "lucide-react";
 import { useFileManagerStore, CustomFolderStyle } from "../../store/useFileManagerStore";
-import { MacFolderIcon } from "../MacFolderIcon";
+import { MacFolderIcon, FONT_OPTIONS } from "../MacFolderIcon";
 
 // 16 curated Apple / FolderForge inspired folder colors
 const COLOR_PRESETS = [
@@ -79,6 +79,8 @@ export const FolderCustomizerModal: React.FC = () => {
   const [text, setText] = useState("");
   const [textColor, setTextColor] = useState("#ffffff");
   const [icon, setIcon] = useState("");
+  const [fontFamily, setFontFamily] = useState("sans");
+  const [fontSize, setFontSize] = useState(1.0);
 
   useEffect(() => {
     if (folderCustomizerTarget) {
@@ -88,11 +90,15 @@ export const FolderCustomizerModal: React.FC = () => {
         setText(existing.text || "");
         setTextColor(existing.textColor || "#ffffff");
         setIcon(existing.icon || "");
+        setFontFamily(existing.fontFamily || "sans");
+        setFontSize(existing.fontSize || 1.0);
       } else {
         setColor("#007aff");
         setText("");
         setTextColor("#ffffff");
         setIcon("");
+        setFontFamily("sans");
+        setFontSize(1.0);
       }
     }
   }, [folderCustomizerTarget, customFolderStyles]);
@@ -109,6 +115,8 @@ export const FolderCustomizerModal: React.FC = () => {
       text: text.trim() || undefined,
       textColor: textColor || "#ffffff",
       icon: icon || undefined,
+      fontFamily: fontFamily || "sans",
+      fontSize: fontSize || 1.0,
     };
     await setFolderCustomStyle(folderCustomizerTarget.path, style);
     handleClose();
@@ -165,6 +173,8 @@ export const FolderCustomizerModal: React.FC = () => {
                 text={text}
                 textColor={textColor}
                 icon={icon}
+                fontFamily={fontFamily}
+                fontSize={fontSize}
                 size="2xl"
               />
             </div>
@@ -288,6 +298,83 @@ export const FolderCustomizerModal: React.FC = () => {
                   {t}
                 </button>
               ))}
+            </div>
+
+            {/* Font Family Selection */}
+            <div className="mt-3 pt-2.5 border-t border-border/40">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">Font Family</span>
+                <span className="text-[10px] font-mono text-primary font-bold">
+                  {FONT_OPTIONS.find((f) => f.id === fontFamily)?.name}
+                </span>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {FONT_OPTIONS.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setFontFamily(f.id)}
+                    title={f.name}
+                    className={`py-1.5 px-1 rounded-lg text-xs transition-all border text-center truncate ${
+                      fontFamily === f.id
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold ring-1 ring-primary/40"
+                        : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60 font-medium"
+                    }`}
+                    style={{ fontFamily: f.css }}
+                  >
+                    {f.name.split("/")[0].trim()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font Size Selection */}
+            <div className="mt-2.5 bg-muted/20 p-2.5 rounded-xl border border-border/50">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">Font Size</span>
+                <span className="text-[10px] font-mono text-primary font-bold">
+                  {Math.round(fontSize * 100)}%
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1.5 flex-1">
+                  <span className="text-[10px] font-semibold text-muted-foreground select-none">A</span>
+                  <input
+                    type="range"
+                    min="0.6"
+                    max="1.5"
+                    step="0.05"
+                    value={fontSize}
+                    onChange={(e) => setFontSize(parseFloat(e.target.value))}
+                    className="w-full accent-primary h-1.5 bg-muted rounded-lg appearance-none cursor-pointer"
+                  />
+                  <span className="text-sm font-black text-muted-foreground select-none">A</span>
+                </div>
+
+                <div className="flex items-center space-x-1 shrink-0">
+                  {[
+                    { label: "S", scale: 0.75, title: "Small (75%)" },
+                    { label: "M", scale: 1.0, title: "Normal (100%)" },
+                    { label: "L", scale: 1.25, title: "Large (125%)" },
+                    { label: "XL", scale: 1.5, title: "Extra Large (150%)" },
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => setFontSize(p.scale)}
+                      title={p.title}
+                      className={`w-6 h-6 rounded-md text-[10px] font-mono font-bold transition-all flex items-center justify-center border ${
+                        Math.abs(fontSize - p.scale) < 0.04
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 

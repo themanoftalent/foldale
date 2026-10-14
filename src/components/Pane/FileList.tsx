@@ -449,6 +449,8 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
             text={customStyle.text}
             textColor={customStyle.textColor}
             icon={customStyle.icon}
+            fontFamily={customStyle.fontFamily}
+            fontSize={customStyle.fontSize}
             size={size === "lg" ? "lg" : size === "md" ? "md" : "sm"}
           />
         );

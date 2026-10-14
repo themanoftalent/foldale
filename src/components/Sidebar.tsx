@@ -128,6 +128,8 @@ export const Sidebar: React.FC = () => {
                       text={customStyle.text}
                       textColor={customStyle.textColor}
                       icon={customStyle.icon}
+                      fontFamily={customStyle.fontFamily}
+                      fontSize={customStyle.fontSize}
                       size="sm"
                     />
                   ) : (
@@ -228,6 +230,8 @@ export const Sidebar: React.FC = () => {
                           text={customStyle.text}
                           textColor={customStyle.textColor}
                           icon={customStyle.icon}
+                          fontFamily={customStyle.fontFamily}
+                          fontSize={customStyle.fontSize}
                           size="sm"
                         />
                       ) : (
