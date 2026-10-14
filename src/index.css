@@ -3,69 +3,96 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light Theme (Clean, Modern macOS Silver/Slate) */
   :root {
-    --background: #f4f5f8;
-    --foreground: #1c1917;
+    --background: #f0f2f5;
+    --foreground: #0f172a;
     --card: #ffffff;
-    --card-foreground: #1c1917;
+    --card-foreground: #0f172a;
+    --card-inactive: #f8fafc;
     --popover: #ffffff;
-    --popover-foreground: #1c1917;
-    --primary: #f59e0b;
+    --popover-foreground: #0f172a;
+    --primary: #2563eb;
     --primary-foreground: #ffffff;
     --secondary: #e2e8f0;
     --secondary-foreground: #0f172a;
     --muted: #f1f5f9;
     --muted-foreground: #64748b;
-    --accent: #f8fafc;
-    --accent-foreground: #0f172a;
+    --accent: #e0e7ff;
+    --accent-foreground: #1e3a8a;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
     --border: #e2e8f0;
-    --input: #e2e8f0;
-    --ring: #f59e0b;
+    --input: #ffffff;
+    --ring: #3b82f6;
   }
 
-  /* Marta.app True Dark Charcoal Palette */
+  /* Dark Theme (Sophisticated macOS Dark Graphite / Zinc, NOT pitch black) */
   .dark {
-    --background: #141518; /* Marta window matte background */
-    --foreground: #f3f4f6;
-    --card: #1a1b20; /* Marta active pane background */
-    --card-foreground: #f3f4f6;
-    --popover: #1f2026;
-    --popover-foreground: #f3f4f6;
-    --primary: #f59e0b; /* Marta iconic amber */
-    --primary-foreground: #000000;
-    --secondary: #22242b;
-    --secondary-foreground: #f3f4f6;
-    --muted: #22242b;
-    --muted-foreground: #838896;
-    --accent: #262831;
-    --accent-foreground: #f3f4f6;
+    --background: #181a20;
+    --foreground: #f8fafc;
+    --card: #20232c;
+    --card-foreground: #f8fafc;
+    --card-inactive: #1a1c23;
+    --popover: #242732;
+    --popover-foreground: #f8fafc;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #272a35;
+    --secondary-foreground: #f8fafc;
+    --muted: #262933;
+    --muted-foreground: #94a3b8;
+    --accent: #2e3240;
+    --accent-foreground: #f8fafc;
     --destructive: #f43f5e;
     --destructive-foreground: #ffffff;
-    --border: #282a33;
-    --input: #1a1b20;
-    --ring: #f59e0b;
+    --border: #2e323e;
+    --input: #20232c;
+    --ring: #3b82f6;
   }
 
-  /* Accent Color Variants */
-  [data-accent="amber"] {
-    --primary: #f59e0b;
-    --ring: #f59e0b;
-  }
+  /* Dynamic Accent Color Overrides */
   [data-accent="blue"] {
+    --primary: #2563eb;
+    --ring: #3b82f6;
+  }
+  .dark [data-accent="blue"] {
     --primary: #3b82f6;
     --ring: #3b82f6;
   }
+
+  [data-accent="amber"] {
+    --primary: #d97706;
+    --ring: #f59e0b;
+  }
+  .dark [data-accent="amber"] {
+    --primary: #f59e0b;
+    --ring: #f59e0b;
+  }
+
   [data-accent="violet"] {
+    --primary: #7c3aed;
+    --ring: #8b5cf6;
+  }
+  .dark [data-accent="violet"] {
     --primary: #8b5cf6;
     --ring: #8b5cf6;
   }
+
   [data-accent="emerald"] {
+    --primary: #059669;
+    --ring: #10b981;
+  }
+  .dark [data-accent="emerald"] {
     --primary: #10b981;
     --ring: #10b981;
   }
+
   [data-accent="rose"] {
+    --primary: #e11d48;
+    --ring: #f43f5e;
+  }
+  .dark [data-accent="rose"] {
     --primary: #f43f5e;
     --ring: #f43f5e;
   }
@@ -73,8 +100,8 @@
 
 /* Custom minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -82,12 +109,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.45);
 }
 
 .no-scrollbar::-webkit-scrollbar {

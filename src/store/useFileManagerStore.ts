@@ -155,8 +155,8 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   activePane: "left",
   layoutMode: "dual-horizontal",
   showHiddenFiles: false,
-  theme: "dark",
-  accentColor: "amber",
+  theme: "light",
+  accentColor: "blue",
   density: "normal",
   sidebarCollapsed: false,
 

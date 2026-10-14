@@ -366,30 +366,30 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
   // Render File Icon
   const renderIcon = (item: FileEntry) => {
     if (item.is_symlink) {
-      return <Link2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
+      return <Link2 className="w-4 h-4 text-cyan-500 shrink-0" />;
     }
     if (item.is_dir) {
-      return <Folder className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />;
+      return <Folder className="w-4 h-4 text-blue-500 fill-blue-500/25 shrink-0" />;
     }
 
     const cat = getFileCategory(item.mime_type, item.extension);
     switch (cat) {
       case "image":
-        return <ImageIcon className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
+        return <ImageIcon className="w-4 h-4 text-purple-500 shrink-0" />;
       case "video":
-        return <Film className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
+        return <Film className="w-4 h-4 text-rose-500 shrink-0" />;
       case "audio":
-        return <Music className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
+        return <Music className="w-4 h-4 text-amber-500 shrink-0" />;
       case "archive":
-        return <FileArchive className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+        return <FileArchive className="w-4 h-4 text-orange-500 shrink-0" />;
       case "code":
-        return <FileCode className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
+        return <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />;
       case "text":
-        return <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+        return <FileText className="w-4 h-4 text-blue-400 shrink-0" />;
       case "pdf":
-        return <FileSpreadsheet className="w-3.5 h-3.5 text-red-400 shrink-0" />;
+        return <FileSpreadsheet className="w-4 h-4 text-red-500 shrink-0" />;
       default:
-        return <File className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+        return <File className="w-4 h-4 text-muted-foreground shrink-0" />;
     }
   };
 
@@ -438,8 +438,8 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       {/* Detailed View */}
       {viewMode === "detailed" && (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Table Header (Marta style) */}
-          <div className="h-6.5 bg-[#17181c] border-b border-[#25272e] grid grid-cols-12 px-3 text-[10px] font-semibold tracking-wider uppercase text-muted-foreground items-center shrink-0">
+          {/* Table Header */}
+          <div className="h-7 bg-muted/60 border-b border-border/70 grid grid-cols-12 px-3 text-[10.5px] font-semibold tracking-wider uppercase text-muted-foreground items-center shrink-0">
             <div
               onClick={(e) => {
                 e.stopPropagation();
@@ -524,14 +524,14 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                       handleItemDoubleClick(item);
                     }}
                     onContextMenu={(e) => handleContextMenu(e, item)}
-                    className={`h-6.5 px-2 rounded flex items-center text-xs transition-colors cursor-pointer border ${
+                    className={`h-7 px-2.5 rounded-lg flex items-center text-xs transition-colors cursor-pointer border ${
                       isTargetDrop
                         ? "bg-primary/20 border-primary ring-1 ring-primary"
                         : isSelected
                         ? isPaneActive
-                          ? "bg-amber-500/15 border-amber-500/50 text-amber-300 font-medium"
-                          : "bg-muted/70 border-border/70 text-foreground"
-                        : "border-transparent hover:bg-white/[0.04] text-foreground/90"
+                          ? "bg-primary/15 border-primary/50 text-primary font-semibold shadow-xs"
+                          : "bg-muted border-border/80 text-foreground font-medium"
+                        : "border-transparent hover:bg-muted/70 text-foreground"
                     } ${item.is_hidden ? "opacity-50" : ""}`}
                   >
                     <div className="w-full grid grid-cols-12 items-center">
@@ -601,10 +601,12 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   handleItemDoubleClick(item);
                 }}
                 onContextMenu={(e) => handleContextMenu(e, item)}
-                className={`h-6.5 px-2.5 rounded flex items-center space-x-2 text-xs cursor-pointer w-48 truncate transition-colors border ${
+                className={`h-7 px-2.5 rounded-lg flex items-center space-x-2 text-xs cursor-pointer w-48 truncate transition-colors border ${
                   isSelected
-                    ? "bg-amber-500/15 border-amber-500/50 text-amber-300 font-medium"
-                    : "border-transparent hover:bg-white/[0.04] text-foreground/90"
+                    ? isPaneActive
+                      ? "bg-primary/15 border-primary/50 text-primary font-semibold shadow-xs"
+                      : "bg-muted border-border/80 text-foreground font-medium"
+                    : "border-transparent hover:bg-muted/70 text-foreground"
                 } ${item.is_hidden ? "opacity-50" : ""}`}
               >
                 {renderIcon(item)}
@@ -635,10 +637,12 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   handleItemDoubleClick(item);
                 }}
                 onContextMenu={(e) => handleContextMenu(e, item)}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-lg cursor-pointer transition-all border ${
+                className={`flex flex-col items-center justify-center p-3 rounded-xl cursor-pointer transition-all border ${
                   isSelected
-                    ? "bg-amber-500/15 border-amber-500/60 text-amber-300 shadow-sm"
-                    : "border-transparent hover:bg-white/[0.04] text-foreground"
+                    ? isPaneActive
+                      ? "bg-primary/15 border-primary/60 text-primary font-semibold shadow-sm"
+                      : "bg-muted border-border/80 text-foreground font-medium"
+                    : "border-transparent hover:bg-muted/70 text-foreground"
                 } ${item.is_hidden ? "opacity-50" : ""}`}
               >
                 <div className="scale-125 mb-1.5 mt-1">{renderIcon(item)}</div>
@@ -658,7 +662,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       {contextMenu.visible && (
         <div
           style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-          className="fixed z-50 w-52 bg-[#1c1d22]/95 backdrop-blur-md border border-[#2d2f38] rounded-lg shadow-2xl py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-100 text-foreground"
+          className="fixed z-50 w-52 bg-popover/95 backdrop-blur-xl border border-border/80 rounded-xl shadow-2xl py-1.5 text-xs select-none animate-in fade-in zoom-in-95 duration-100 text-popover-foreground"
           onClick={(e) => e.stopPropagation()}
         >
           {contextMenu.targetItem ? (
@@ -668,7 +672,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   handleItemDoubleClick(contextMenu.targetItem!);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Open</span>
@@ -679,7 +683,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   setPreviewPath(contextMenu.targetItem!.path);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Eye className="w-3.5 h-3.5" />
@@ -693,7 +697,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   await api.revealInOS(contextMenu.targetItem!.path);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <FolderArchive className="w-3.5 h-3.5" />
                 <span>Reveal in Native OS</span>
@@ -706,7 +710,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   copySelection();
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Copy className="w-3.5 h-3.5" />
@@ -720,7 +724,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   cutSelection();
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Scissors className="w-3.5 h-3.5" />
@@ -734,7 +738,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   duplicateSelection();
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>Duplicate</span>
@@ -745,7 +749,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   handleStartRename(contextMenu.targetItem!);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Edit2 className="w-3.5 h-3.5" />
@@ -760,9 +764,9 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                     setContextMenu((p) => ({ ...p, visible: false }));
                     setBatchRenameOpen(true);
                   }}
-                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/10 hover:text-primary transition-colors"
                 >
-                  <Edit2 className="w-3.5 h-3.5 text-amber-500" />
+                  <Edit2 className="w-3.5 h-3.5 text-primary" />
                   <span>Batch Rename ({selectedPaths.length})</span>
                 </button>
               )}
@@ -783,7 +787,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                     alert(`Compress failed: ${err}`);
                   }
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <Archive className="w-3.5 h-3.5" />
                 <span>Compress to ZIP</span>
@@ -801,7 +805,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                       alert(`Extract failed: ${err}`);
                     }
                   }}
-                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors text-amber-400"
+                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/10 hover:text-primary transition-colors text-primary font-medium"
                 >
                   <Archive className="w-3.5 h-3.5" />
                   <span>Extract ZIP Here</span>
@@ -845,7 +849,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   setPropertiesPath(contextMenu.targetItem!.path);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Info className="w-3.5 h-3.5" />
@@ -862,7 +866,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                     setContextMenu((p) => ({ ...p, visible: false }));
                     pasteClipboard();
                   }}
-                  className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                  className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
                 >
                   <div className="flex items-center space-x-2">
                     <ClipboardPaste className="w-3.5 h-3.5" />
@@ -877,7 +881,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   refreshPane(paneId);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <span>Refresh</span>
                 <span className="text-[10px] text-muted-foreground font-mono">F5</span>
@@ -888,7 +892,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   selectAll(paneId);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <span>Select All</span>
                 <span className="text-[10px] text-muted-foreground font-mono">⌘A</span>

@@ -66,7 +66,7 @@ export const App: React.FC = () => {
   useKeyboardShortcuts();
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-background text-foreground overflow-hidden font-sans select-none">
+    <div className="w-screen h-screen flex flex-col bg-background text-foreground overflow-hidden font-sans select-none antialiased">
       {/* Top Application Header */}
       <Header />
 
@@ -76,7 +76,7 @@ export const App: React.FC = () => {
         <Sidebar />
 
         {/* Panes Container */}
-        <main className="flex-1 flex min-w-0 min-h-0 overflow-hidden p-1 gap-1 bg-[#141518]">
+        <main className="flex-1 flex min-w-0 min-h-0 overflow-hidden p-2 gap-2 bg-background">
           {layoutMode === "dual-horizontal" && (
             <>
               <FilePane paneId="left" />
@@ -85,7 +85,7 @@ export const App: React.FC = () => {
           )}
 
           {layoutMode === "dual-vertical" && (
-            <div className="flex-1 flex flex-col min-h-0 gap-1.5">
+            <div className="flex-1 flex flex-col min-h-0 gap-2">
               <FilePane paneId="left" />
               <FilePane paneId="right" />
             </div>
