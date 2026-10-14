@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Plus,
   Trash2,
+  Settings,
 } from "lucide-react";
 import { useFileManagerStore } from "../store/useFileManagerStore";
 import { formatBytes } from "../utils/formatters";
@@ -32,6 +33,7 @@ export const Sidebar: React.FC = () => {
     navigateTo,
     leftPane,
     rightPane,
+    setSettingsOpen,
   } = useFileManagerStore();
 
   const [recentPaths, setRecentPaths] = useState<string[]>([]);
@@ -252,6 +254,21 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Sidebar Footer with Options */}
+      <div className="p-2 border-t border-border/60 bg-muted/20 shrink-0">
+        <button
+          onClick={() => setSettingsOpen(true)}
+          title="Options & Preferences (⌘,)"
+          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-foreground/80 hover:bg-muted hover:text-foreground transition-colors group"
+        >
+          <div className="flex items-center space-x-2 truncate">
+            <Settings className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:rotate-45 transition-transform" />
+            <span className="font-semibold text-xs text-foreground">Options</span>
+          </div>
+          <kbd className="text-[10px] font-mono text-muted-foreground bg-card px-1.5 py-0.5 rounded border border-border/80">⌘,</kbd>
+        </button>
       </div>
     </aside>
   );

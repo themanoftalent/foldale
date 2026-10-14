@@ -22,6 +22,7 @@ export function useKeyboardShortcuts() {
     setPropertiesPath,
     setSearchOpen,
     setCommandPaletteOpen,
+    setSettingsOpen,
     setNewFolderOpen,
     setBatchRenameOpen,
     undoLastOperation,
@@ -54,6 +55,13 @@ export function useKeyboardShortcuts() {
       if (e.key === "F3" || (cmdOrCtrl && (e.key === "f" || e.key === "F"))) {
         e.preventDefault();
         setSearchOpen(true);
+        return;
+      }
+
+      // Options / Preferences: ⌘, / Ctrl+,
+      if (cmdOrCtrl && e.key === ",") {
+        e.preventDefault();
+        setSettingsOpen(true);
         return;
       }
 

@@ -59,6 +59,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     setBatchRenameOpen,
     setPendingConflict,
     setUndoToastMessage,
+    colorfulFolders,
   } = useFileManagerStore();
 
   const paneState = paneId === "left" ? leftPane : rightPane;
@@ -373,7 +374,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       return <Link2 className={`${sizeClass} text-cyan-500 shrink-0`} />;
     }
     if (item.is_dir) {
-      const folderStyle = getFolderStyle(item.name);
+      const folderStyle = getFolderStyle(item.name, colorfulFolders);
       const FolderIcon = folderStyle.Icon;
       return (
         <FolderIcon

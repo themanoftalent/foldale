@@ -16,6 +16,7 @@ import {
   Command,
   FolderSync,
   Trash2,
+  Settings,
 } from "lucide-react";
 import { useFileManagerStore } from "../store/useFileManagerStore";
 import { api } from "../services/tauriBridge";
@@ -37,6 +38,7 @@ export const Header: React.FC = () => {
     deleteSelection,
     setSearchOpen,
     setCommandPaletteOpen,
+    setSettingsOpen,
     setNewFolderOpen,
     setNewFileOpen,
     transferQueue,
@@ -274,6 +276,19 @@ export const Header: React.FC = () => {
             <Laptop className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        <div className="h-4 w-[1px] bg-border mx-1" />
+
+        {/* Options / Settings button */}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          title="Options & Preferences (⌘,)"
+          className="flex items-center space-x-1.5 px-2.5 py-1 text-xs text-muted-foreground bg-muted/60 hover:bg-muted hover:text-foreground border border-border/50 rounded-lg transition-colors group"
+        >
+          <Settings className="w-3.5 h-3.5 text-primary group-hover:rotate-45 transition-transform" />
+          <span className="font-semibold text-foreground">Options</span>
+          <kbd className="hidden sm:inline text-[10px] font-mono px-1 py-0.2 bg-card rounded border border-border/60">⌘,</kbd>
+        </button>
       </div>
     </header>
   );

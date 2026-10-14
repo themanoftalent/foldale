@@ -27,4 +27,13 @@ describe("folderColors", () => {
     expect(styleBeta.strokeClass).toBeDefined();
     expect(styleBeta.fillClass).toBeDefined();
   });
+
+  it("respects colorful=false setting for classic monochrome folders", () => {
+    const styleMonochrome = getFolderStyle("ProjectAlpha", false);
+    expect(styleMonochrome.strokeClass).toContain("blue");
+
+    // Trash should still stay red warning even when colorful is false
+    const trashStyle = getFolderStyle("trash", false);
+    expect(trashStyle.strokeClass).toContain("red");
+  });
 });

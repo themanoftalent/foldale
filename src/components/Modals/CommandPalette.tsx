@@ -26,6 +26,7 @@ import {
   FolderArchive,
   Info,
   AlertTriangle,
+  Settings,
 } from "lucide-react";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { api } from "../../services/tauriBridge";
@@ -50,6 +51,7 @@ export const CommandPalette: React.FC = () => {
     setTheme,
     setAccentColor,
     refreshPane,
+    setSettingsOpen,
     setNewFolderOpen,
     setNewFileOpen,
     setSearchOpen,
@@ -87,6 +89,16 @@ export const CommandPalette: React.FC = () => {
   if (!commandPaletteOpen) return null;
 
   const commands: CommandItem[] = [
+    // Options & Preferences
+    {
+      id: "app-options",
+      title: "Open Options & Preferences",
+      category: "Application",
+      icon: Settings,
+      shortcut: "⌘,",
+      action: () => setSettingsOpen(true),
+    },
+
     // Navigation
     ...(systemLocations
       ? [

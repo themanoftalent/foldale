@@ -117,7 +117,7 @@ const COLOR_PALETTES = [
  * Deterministically resolve a colorful folder icon and palette
  * based on folder name keywords or stable hash.
  */
-export function getFolderStyle(folderName: string): FolderStyle {
+export function getFolderStyle(folderName: string, colorful: boolean = true): FolderStyle {
   const name = (folderName || "").trim().toLowerCase();
 
   // 1. Semantic Icon & Color Matching for well-known directories
@@ -128,6 +128,17 @@ export function getFolderStyle(folderName: string): FolderStyle {
       fillClass: "fill-red-500/25 dark:fill-red-400/25",
       textClass: "text-red-600 dark:text-red-400",
       badgeClass: "bg-red-500/15 text-red-700 dark:text-red-300",
+    };
+  }
+
+  // If user disabled colorful folders in Options, return standard clean folder styling
+  if (!colorful) {
+    return {
+      Icon: Folder,
+      strokeClass: "text-blue-500 dark:text-blue-400",
+      fillClass: "fill-blue-500/25 dark:fill-blue-400/25",
+      textClass: "text-foreground",
+      badgeClass: "bg-muted text-muted-foreground",
     };
   }
 

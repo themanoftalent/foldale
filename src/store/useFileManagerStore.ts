@@ -68,6 +68,10 @@ interface FileManagerStore {
   commandPaletteOpen: boolean;
   newFolderOpen: boolean;
   newFileOpen: boolean;
+  settingsOpen: boolean;
+  colorfulFolders: boolean;
+  confirmTrashPrompt: boolean;
+  defaultConflictPolicy: ConflictPolicy | "ask";
 
   // Safety & Conflict Management
   pendingConflict: PendingConflict | null;
@@ -136,6 +140,10 @@ interface FileManagerStore {
   setCommandPaletteOpen: (open: boolean) => void;
   setNewFolderOpen: (open: boolean) => void;
   setNewFileOpen: (open: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
+  setColorfulFolders: (enabled: boolean) => void;
+  setConfirmTrashPrompt: (enabled: boolean) => void;
+  setDefaultConflictPolicy: (policy: ConflictPolicy | "ask") => void;
 }
 
 const initialTab = (id: string, path: string): TabItem => ({
@@ -189,6 +197,10 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   commandPaletteOpen: false,
   newFolderOpen: false,
   newFileOpen: false,
+  settingsOpen: false,
+  colorfulFolders: true,
+  confirmTrashPrompt: false,
+  defaultConflictPolicy: "ask",
 
   pendingConflict: null,
   pendingDelete: null,
@@ -212,6 +224,15 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
       }
       if (settings.density) {
         set({ density: settings.density as any });
+      }
+      if (settings.colorfulFolders !== undefined) {
+        set({ colorfulFolders: settings.colorfulFolders === "true" });
+      }
+      if (settings.confirmTrashPrompt !== undefined) {
+        set({ confirmTrashPrompt: settings.confirmTrashPrompt === "true" });
+      }
+      if (settings.defaultConflictPolicy) {
+        set({ defaultConflictPolicy: settings.defaultConflictPolicy as any });
       }
 
       const locations = await api.getSystemLocations();
@@ -672,6 +693,12 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
       return;
     }
 
+    if (state.confirmTrashPrompt) {
+      // Show confirmation dialog before moving to Trash if setting is enabled
+      set({ pendingDelete: { paths: tab.selectedPaths, permanent: false } });
+      return;
+    }
+
     try {
       await api.deleteItems(tab.selectedPaths, false);
       set({ undoToastMessage: `Moved ${tab.selectedPaths.length} item(s) to Trash` });
@@ -783,4 +810,17 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setNewFolderOpen: (open) => set({ newFolderOpen: open }),
   setNewFileOpen: (open) => set({ newFileOpen: open }),
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setColorfulFolders: (enabled) => {
+    set({ colorfulFolders: enabled });
+    api.setSetting("colorfulFolders", String(enabled));
+  },
+  setConfirmTrashPrompt: (enabled) => {
+    set({ confirmTrashPrompt: enabled });
+    api.setSetting("confirmTrashPrompt", String(enabled));
+  },
+  setDefaultConflictPolicy: (policy) => {
+    set({ defaultConflictPolicy: policy });
+    api.setSetting("defaultConflictPolicy", policy);
+  },
 }));
