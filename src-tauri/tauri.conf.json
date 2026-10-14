@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Foldale",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "identifier": "com.themanoftalent.foldale",
   "build": {
     "frontendDist": "../dist",
@@ -14,29 +14,55 @@
       {
         "title": "Foldale",
         "label": "main",
-        "width": 1280,
-        "height": 820,
-        "minWidth": 800,
-        "minHeight": 540,
+        "width": 1320,
+        "height": 840,
+        "minWidth": 900,
+        "minHeight": 560,
         "resizable": true,
         "fullscreen": false,
-        "center": true
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 18, "y": 22 },
+        "dragDropEnabled": true,
+        "visible": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; media-src 'self' asset: http://asset.localhost blob:; frame-src asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": ["**"],
+          "requireLiteralLeadingDot": false
+        }
+      }
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg"],
+    "category": "Productivity",
+    "copyright": "Copyright © 2026 Mehmet Akif Cifci",
+    "shortDescription": "A dual-pane file manager for macOS",
+    "longDescription": "Foldale is a keyboard-first, dual-pane file manager for macOS with safe file operations, undo, conflict handling, Quick Look style previews, archives, search, and bookmarks.",
+    "homepage": "https://github.com/themanoftalent/foldale",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "dmg": {
+        "background": "dmg/background.png",
+        "windowSize": { "width": 660, "height": 420 },
+        "appPosition": { "x": 180, "y": 200 },
+        "applicationFolderPosition": { "x": 480, "y": 200 }
+      }
+    }
   },
   "plugins": {}
 }
