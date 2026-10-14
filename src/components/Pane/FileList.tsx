@@ -31,6 +31,7 @@ import { FileEntry, PaneId, SortField } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { formatBytes, formatDate, getFileCategory } from "../../utils/formatters";
 import { getFolderStyle } from "../../utils/folderColors";
+import { MacFolderIcon } from "../MacFolderIcon";
 import { api } from "../../services/tauriBridge";
 
 interface FileListProps {
@@ -443,34 +444,13 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       const customStyle = customFolderStyles[item.path];
       if (customStyle) {
         return (
-          <div className={`relative inline-flex items-center justify-center shrink-0 ${sizeClass}`}>
-            <Folder
-              className={`${sizeClass} shrink-0 transition-transform`}
-              style={{
-                color: customStyle.color,
-                fill: `${customStyle.color}35`,
-              }}
-            />
-            {customStyle.icon ? (
-              <span
-                className={`absolute select-none pointer-events-none ${
-                  size === "lg" ? "text-base pt-1" : size === "md" ? "text-[10px]" : "text-[8px]"
-                }`}
-              >
-                {customStyle.icon}
-              </span>
-            ) : customStyle.text && size === "lg" ? (
-              <span
-                className="absolute bottom-1 px-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider select-none pointer-events-none shadow-xs border border-white/20"
-                style={{
-                  backgroundColor: customStyle.color,
-                  color: customStyle.textColor || "#ffffff",
-                }}
-              >
-                {customStyle.text.slice(0, 5)}
-              </span>
-            ) : null}
-          </div>
+          <MacFolderIcon
+            color={customStyle.color}
+            text={customStyle.text}
+            textColor={customStyle.textColor}
+            icon={customStyle.icon}
+            size={size === "lg" ? "lg" : size === "md" ? "md" : "sm"}
+          />
         );
       }
 
@@ -679,18 +659,6 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                         ) : (
                           <div className="flex items-center space-x-1.5 truncate">
                             <span className="truncate text-[11.5px] tracking-tight">{item.name}</span>
-                            {item.is_dir && customFolderStyles[item.path]?.text && (
-                              <span
-                                className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase tracking-wider shadow-2xs border shrink-0 leading-tight"
-                                style={{
-                                  backgroundColor: `${customFolderStyles[item.path].color}25`,
-                                  color: customFolderStyles[item.path].color,
-                                  borderColor: `${customFolderStyles[item.path].color}50`,
-                                }}
-                              >
-                                {customFolderStyles[item.path].text}
-                              </span>
-                            )}
                           </div>
                         )}
                       </div>
@@ -772,18 +740,6 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
               >
                 {renderIcon(item)}
                 <span className="truncate text-[11.5px]">{item.name}</span>
-                {item.is_dir && customFolderStyles[item.path]?.text && (
-                  <span
-                    className="px-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider border shrink-0 leading-tight"
-                    style={{
-                      backgroundColor: `${customFolderStyles[item.path].color}25`,
-                      color: customFolderStyles[item.path].color,
-                      borderColor: `${customFolderStyles[item.path].color}50`,
-                    }}
-                  >
-                    {customFolderStyles[item.path].text}
-                  </span>
-                )}
                 {isDisplayedInAdjacent ? (
                   <ChevronRight className="w-3.5 h-3.5 text-primary ml-auto shrink-0" />
                 ) : item.is_dir ? (

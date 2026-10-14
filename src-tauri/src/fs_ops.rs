@@ -596,6 +596,103 @@ pub fn read_file_base64(file_path: &str) -> Result<String, String> {
     Ok(format!("data:{};base64,{}", mime, b64))
 }
 
+/// Set or reset custom native folder icon in macOS
+pub fn set_native_folder_icon(folder_path: &str, icon_data: Option<&str>) -> Result<(), String> {
+    let folder = Path::new(folder_path);
+    if !folder.is_dir() {
+        return Err(format!("Path is not a directory: {}", folder_path));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+
+        match icon_data {
+            Some(raw) if !raw.trim().is_empty() => {
+                let trimmed = raw.trim();
+                let (bytes, is_svg) = if trimmed.starts_with("<svg") || trimmed.starts_with("<?xml") {
+                    (trimmed.as_bytes().to_vec(), true)
+                } else if trimmed.starts_with("data:image/svg+xml;base64,") {
+                    let b64 = trimmed.trim_start_matches("data:image/svg+xml;base64,").trim();
+                    let decoded = BASE64_STANDARD.decode(b64).map_err(|e| format!("Base64 decode error: {}", e))?;
+                    (decoded, true)
+                } else if trimmed.starts_with("data:image/png;base64,") {
+                    let b64 = trimmed.trim_start_matches("data:image/png;base64,").trim();
+                    let decoded = BASE64_STANDARD.decode(b64).map_err(|e| format!("Base64 decode error: {}", e))?;
+                    (decoded, false)
+                } else if let Ok(decoded) = BASE64_STANDARD.decode(trimmed) {
+                    let is_svg_bytes = decoded.starts_with(b"<svg") || decoded.starts_with(b"<?xml");
+                    (decoded, is_svg_bytes)
+                } else {
+                    (trimmed.as_bytes().to_vec(), trimmed.starts_with("<svg"))
+                };
+
+                let nanos = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos();
+                let ext = if is_svg { "svg" } else { "png" };
+                let temp_icon_path = std::env::temp_dir().join(format!("foldale_icon_{}_{}.{}", std::process::id(), nanos, ext));
+                fs::write(&temp_icon_path, &bytes).map_err(|e| format!("Failed to write temp icon: {}", e))?;
+
+                let swift_script = r#"
+                    import AppKit
+                    let args = CommandLine.arguments
+                    let folder = args[1]
+                    let iconPath = args[2]
+                    if let img = NSImage(contentsOfFile: iconPath) {
+                        let _ = NSWorkspace.shared.setIcon(img, forFile: folder, options: [])
+                        NSWorkspace.shared.noteFileSystemChanged(folder)
+                    }
+                "#;
+
+                let output = Command::new("swift")
+                    .arg("-e")
+                    .arg(swift_script)
+                    .arg(folder_path)
+                    .arg(&temp_icon_path)
+                    .output();
+
+                let _ = fs::remove_file(&temp_icon_path);
+
+                match output {
+                    Ok(out) if out.status.success() => Ok(()),
+                    Ok(out) => Err(format!("Swift setIcon error: {}", String::from_utf8_lossy(&out.stderr))),
+                    Err(e) => Err(format!("Failed to run swift: {}", e)),
+                }
+            }
+            _ => {
+                // Reset to default macOS folder icon
+                let swift_script = r#"
+                    import AppKit
+                    let args = CommandLine.arguments
+                    let folder = args[1]
+                    let _ = NSWorkspace.shared.setIcon(nil, forFile: folder, options: [])
+                    NSWorkspace.shared.noteFileSystemChanged(folder)
+                "#;
+
+                let output = Command::new("swift")
+                    .arg("-e")
+                    .arg(swift_script)
+                    .arg(folder_path)
+                    .output();
+
+                match output {
+                    Ok(out) if out.status.success() => Ok(()),
+                    Ok(out) => Err(format!("Swift resetIcon error: {}", String::from_utf8_lossy(&out.stderr))),
+                    Err(e) => Err(format!("Failed to run swift: {}", e)),
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -666,6 +763,20 @@ mod tests {
         assert_eq!(res.file_count, 2);
         assert_eq!(res.dir_count, 1);
         assert_eq!(res.total_bytes, 3072);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_set_and_reset_native_folder_icon() {
+        let temp_dir = get_unique_temp_dir("foldale_test_icon");
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 84"><rect width="100" height="84" fill="#be4d85"/><text x="50" y="50" fill="#ffffff">MRI</text></svg>"##;
+
+        let res = set_native_folder_icon(&temp_dir.to_string_lossy(), Some(svg));
+        assert!(res.is_ok(), "Failed to set custom native folder icon: {:?}", res.err());
+
+        let res_reset = set_native_folder_icon(&temp_dir.to_string_lossy(), None);
+        assert!(res_reset.is_ok(), "Failed to reset custom native folder icon: {:?}", res_reset.err());
 
         let _ = fs::remove_dir_all(&temp_dir);
     }

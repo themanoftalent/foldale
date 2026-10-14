@@ -87,6 +87,12 @@ export const api = {
     }
   },
 
+  setNativeFolderIcon: async (path: string, iconData: string | null): Promise<void> => {
+    if (isTauriEnvironment()) {
+      await invoke("set_native_folder_icon", { path, iconData, icon_data: iconData });
+    }
+  },
+
   renameItem: async (oldPath: string, newPath: string): Promise<void> => {
     if (isTauriEnvironment()) {
       await invoke("rename_item", { oldPath, newPath });

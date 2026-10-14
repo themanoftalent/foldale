@@ -30,6 +30,7 @@ pub fn run() {
             commands::calculate_dir_size,
             commands::create_file,
             commands::create_directory,
+            commands::set_native_folder_icon,
             commands::rename_item,
             commands::batch_rename,
             commands::check_conflicts,

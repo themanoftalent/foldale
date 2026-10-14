@@ -19,6 +19,7 @@ import {
 import { useFileManagerStore } from "../store/useFileManagerStore";
 import { formatBytes } from "../utils/formatters";
 import { api } from "../services/tauriBridge";
+import { MacFolderIcon } from "./MacFolderIcon";
 
 export const Sidebar: React.FC = () => {
   const {
@@ -34,6 +35,7 @@ export const Sidebar: React.FC = () => {
     leftPane,
     rightPane,
     setSettingsOpen,
+    customFolderStyles,
   } = useFileManagerStore();
 
   const [recentPaths, setRecentPaths] = useState<string[]>([]);
@@ -108,6 +110,7 @@ export const Sidebar: React.FC = () => {
             {systemItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentPath === item.path;
+              const customStyle = customFolderStyles[item.path];
               return (
                 <button
                   key={item.label}
@@ -119,7 +122,17 @@ export const Sidebar: React.FC = () => {
                       : "text-foreground/80 hover:bg-muted/70 hover:text-foreground"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : item.color}`} />
+                  {customStyle ? (
+                    <MacFolderIcon
+                      color={customStyle.color}
+                      text={customStyle.text}
+                      textColor={customStyle.textColor}
+                      icon={customStyle.icon}
+                      size="sm"
+                    />
+                  ) : (
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : item.color}`} />
+                  )}
                   <span className="truncate font-medium">{item.label}</span>
                 </button>
               );
@@ -194,6 +207,7 @@ export const Sidebar: React.FC = () => {
             ) : (
               bookmarks.map((b) => {
                 const isActive = currentPath === b.path;
+                const customStyle = customFolderStyles[b.path];
                 return (
                   <div
                     key={b.id}
@@ -208,7 +222,17 @@ export const Sidebar: React.FC = () => {
                       title={b.path}
                       className="flex items-center space-x-2 truncate flex-1 text-left"
                     >
-                      <BookmarkIcon className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                      {customStyle ? (
+                        <MacFolderIcon
+                          color={customStyle.color}
+                          text={customStyle.text}
+                          textColor={customStyle.textColor}
+                          icon={customStyle.icon}
+                          size="sm"
+                        />
+                      ) : (
+                        <BookmarkIcon className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                      )}
                       <span className="truncate font-medium">{b.name}</span>
                     </button>
                     <button

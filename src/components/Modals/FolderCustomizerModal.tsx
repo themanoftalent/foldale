@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Folder, Palette, Type, Sparkles, X, Check, RotateCcw } from "lucide-react";
+import { Palette, Type, Sparkles, X, Check, RotateCcw } from "lucide-react";
 import { useFileManagerStore, CustomFolderStyle } from "../../store/useFileManagerStore";
+import { MacFolderIcon } from "../MacFolderIcon";
 
 // 16 curated Apple / FolderForge inspired folder colors
 const COLOR_PRESETS = [
@@ -140,7 +141,7 @@ export const FolderCustomizerModal: React.FC = () => {
               <Palette className="w-4 h-4" style={{ color }} />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-tight">Folder Color & Badge</h2>
+              <h2 className="text-sm font-bold tracking-tight">Folder Color & Icon Stamp</h2>
               <p className="text-[11px] text-muted-foreground truncate max-w-[260px]">
                 {folderCustomizerTarget.name}
               </p>
@@ -156,36 +157,16 @@ export const FolderCustomizerModal: React.FC = () => {
 
         {/* Modal Body */}
         <div className="p-5 space-y-5 overflow-y-auto flex-1">
-          {/* Live FolderForge Preview */}
+          {/* Live FolderForge / macOS Preview */}
           <div className="flex flex-col items-center justify-center p-6 rounded-xl bg-gradient-to-b from-muted/40 to-muted/10 border border-border/50 relative overflow-hidden">
             <div className="relative flex flex-col items-center justify-center">
-              {/* Folder Icon */}
-              <Folder
-                className="w-24 h-24 transition-all drop-shadow-md"
-                style={{
-                  color,
-                  fill: `${color}35`,
-                }}
+              <MacFolderIcon
+                color={color}
+                text={text}
+                textColor={textColor}
+                icon={icon}
+                size="2xl"
               />
-
-              {/* Text stamp or Symbol Badge */}
-              {icon ? (
-                <div className="absolute inset-0 flex items-center justify-center pt-3 select-none pointer-events-none">
-                  <span className="text-2xl drop-shadow-sm">{icon}</span>
-                </div>
-              ) : text ? (
-                <div className="absolute inset-0 flex items-center justify-center pt-3 select-none pointer-events-none">
-                  <span
-                    className="text-xs font-mono font-black uppercase px-2 py-0.5 rounded shadow-sm border border-white/20 tracking-wider"
-                    style={{
-                      backgroundColor: `${color}`,
-                      color: textColor,
-                    }}
-                  >
-                    {text}
-                  </span>
-                </div>
-              ) : null}
             </div>
 
             <div className="mt-3 text-center">
@@ -193,7 +174,7 @@ export const FolderCustomizerModal: React.FC = () => {
                 {folderCustomizerTarget.name}
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
-                FolderForge style preview
+                Changes apply in Foldale & native macOS Desktop
               </span>
             </div>
           </div>

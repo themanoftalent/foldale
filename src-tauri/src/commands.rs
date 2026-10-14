@@ -68,6 +68,13 @@ pub async fn create_directory(path: String, state: State<'_, AppState>) -> Resul
 }
 
 #[tauri::command]
+pub async fn set_native_folder_icon(path: String, icon_data: Option<String>) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || fs_ops::set_native_folder_icon(&path, icon_data.as_deref()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn rename_item(
     old_path: String,
     new_path: String,

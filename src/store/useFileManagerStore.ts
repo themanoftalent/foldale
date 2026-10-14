@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { api } from "../services/tauriBridge";
+import { generateFolderSvgString } from "../components/MacFolderIcon";
 import {
   Bookmark,
   ClipboardItem,
@@ -870,7 +871,13 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     try {
       await api.setSetting("folder_custom_" + path, JSON.stringify(style));
     } catch (e) {
-      console.error("Failed to save folder style:", e);
+      console.error("Failed to save folder style to db:", e);
+    }
+    try {
+      const svg = generateFolderSvgString(style.color, style.text, style.textColor, style.icon);
+      await api.setNativeFolderIcon(path, svg);
+    } catch (e) {
+      console.error("Failed to set native macOS folder icon:", e);
     }
   },
   removeFolderCustomStyle: async (path) => {
@@ -882,7 +889,12 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     try {
       await api.setSetting("folder_custom_" + path, "");
     } catch (e) {
-      console.error("Failed to remove folder style:", e);
+      console.error("Failed to remove folder style from db:", e);
+    }
+    try {
+      await api.setNativeFolderIcon(path, null);
+    } catch (e) {
+      console.error("Failed to reset native macOS folder icon:", e);
     }
   },
 }));
