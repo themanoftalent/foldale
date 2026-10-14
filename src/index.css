@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #1c1917;
+    --card: #f8fafc;
+    --card-foreground: #1c1917;
+    --popover: #ffffff;
+    --popover-foreground: #1c1917;
+    --primary: #f59e0b;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #f8fafc;
+    --accent-foreground: #0f172a;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #f59e0b;
+  }
+
+  .dark {
+    --background: #121316;
+    --foreground: #f8fafc;
+    --card: #18191e;
+    --card-foreground: #f8fafc;
+    --popover: #1c1d22;
+    --popover-foreground: #f8fafc;
+    --primary: #f59e0b;
+    --primary-foreground: #000000;
+    --secondary: #24262d;
+    --secondary-foreground: #f8fafc;
+    --muted: #24262d;
+    --muted-foreground: #94a3b8;
+    --accent: #24262d;
+    --accent-foreground: #f8fafc;
+    --destructive: #f43f5e;
+    --destructive-foreground: #ffffff;
+    --border: #2e3039;
+    --input: #2e3039;
+    --ring: #f59e0b;
+  }
+
+  /* Accent Color Variants */
+  [data-accent="amber"] {
+    --primary: #f59e0b;
+    --ring: #f59e0b;
+  }
+  [data-accent="blue"] {
+    --primary: #3b82f6;
+    --ring: #3b82f6;
+  }
+  [data-accent="violet"] {
+    --primary: #8b5cf6;
+    --ring: #8b5cf6;
+  }
+  [data-accent="emerald"] {
+    --primary: #10b981;
+    --ring: #10b981;
+  }
+  [data-accent="rose"] {
+    --primary: #f43f5e;
+    --ring: #f43f5e;
+  }
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
