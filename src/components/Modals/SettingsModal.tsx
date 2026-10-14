@@ -571,7 +571,7 @@ export const SettingsModal: React.FC = () => {
                     <p className="text-muted-foreground text-xs">Modern Cross-Platform Dual-Pane File Manager</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold font-mono">
-                        v2.0.0
+                        v2.1.0
                       </span>
                       <span className="text-muted-foreground text-[10px]">Tauri 2 • Rust • React</span>
                     </div>
