@@ -589,6 +589,21 @@ pub fn read_text_preview(file_path: &str, max_bytes: usize) -> Result<String, St
         .or_else(|_| Ok(String::from_utf8_lossy(slice).to_string()))
 }
 
+/// Read file as base64 data URI
+pub fn read_file_base64(file_path: &str) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+    let path = Path::new(file_path);
+    if !path.is_file() {
+        return Err("Not a regular file".to_string());
+    }
+
+    let bytes = fs::read(path).map_err(|e| e.to_string())?;
+    let b64 = BASE64_STANDARD.encode(&bytes);
+    let ext = path.extension().map(|e| e.to_string_lossy().to_string());
+    let mime = detect_mime_type(ext.as_deref());
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

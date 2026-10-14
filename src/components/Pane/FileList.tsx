@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Folder,
   File,
@@ -10,7 +10,6 @@ import {
   Music,
   FileSpreadsheet,
   Link2,
-  ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Eye,
@@ -25,7 +24,7 @@ import {
   Check,
   FolderArchive,
 } from "lucide-react";
-import { FileEntry, PaneId, SortField, ViewMode } from "../../types";
+import { FileEntry, PaneId, SortField } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { formatBytes, formatDate, getFileCategory } from "../../utils/formatters";
 import { api } from "../../services/tauriBridge";
@@ -41,6 +40,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     activePane,
     setActivePane,
     navigateTo,
+    navigateUp,
     selectItem,
     selectAll,
     clearSelection,
@@ -67,10 +67,20 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
   const sortField = currentTab?.sortField || "name";
   const sortDirection = currentTab?.sortDirection || "asc";
 
+  const isPaneActive = activePane === paneId;
+
   // Renaming state
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // Drag and drop state
+  const [dropTargetFolder, setDropTargetFolder] = useState<string | null>(null);
+  const [isPaneDragOver, setIsPaneDragOver] = useState(false);
+
+  // List container ref for autoscroll
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<{ [path: string]: HTMLDivElement | null }>({});
 
   // Context Menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -94,7 +104,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     }
 
     return [...filtered].sort((a, b) => {
-      // Folders always first
+      // Folders always first (Marta rule)
       if (a.is_dir && !b.is_dir) return -1;
       if (!a.is_dir && b.is_dir) return 1;
 
@@ -135,7 +145,6 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
   useEffect(() => {
     if (renamingPath && renameInputRef.current) {
       renameInputRef.current.focus();
-      // Select filename excluding extension
       const lastDot = renameValue.lastIndexOf(".");
       if (lastDot > 0) {
         renameInputRef.current.setSelectionRange(0, lastDot);
@@ -145,10 +154,10 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     }
   }, [renamingPath]);
 
-  const handleStartRename = (item: FileEntry) => {
+  const handleStartRename = useCallback((item: FileEntry) => {
     setRenamingPath(item.path);
     setRenameValue(item.name);
-  };
+  }, []);
 
   const handleConfirmRename = async () => {
     if (!renamingPath || !renameValue.trim()) {
@@ -181,11 +190,9 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     if (item.is_dir) {
       await navigateTo(paneId, item.path, true);
     } else {
-      // Check if archive
       if (item.extension === "zip") {
         setPreviewPath(item.path);
       } else {
-        // Open with default app
         await api.openWithDefaultApp(item.path);
       }
     }
@@ -216,41 +223,152 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     }
   };
 
+  // Keyboard navigation for Marta-style arrow controls
+  useEffect(() => {
+    if (!isPaneActive || renamingPath) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (entries.length === 0) return;
+
+      // Current selected index
+      const currentIndex = entries.findIndex((item) => selectedPaths.includes(item.path));
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, entries.length - 1);
+        const nextItem = entries[nextIndex];
+        selectItem(paneId, nextItem.path, e.shiftKey, false);
+        rowRefs.current[nextItem.path]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prevIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
+        const prevItem = entries[prevIndex];
+        selectItem(paneId, prevItem.path, e.shiftKey, false);
+        rowRefs.current[prevItem.path]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        const first = entries[0];
+        selectItem(paneId, first.path, false, false);
+        rowRefs.current[first.path]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "End") {
+        e.preventDefault();
+        const last = entries[entries.length - 1];
+        selectItem(paneId, last.path, false, false);
+        rowRefs.current[last.path]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (currentIndex >= 0) {
+          handleItemDoubleClick(entries[currentIndex]);
+        }
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        if (currentIndex >= 0) {
+          handleStartRename(entries[currentIndex]);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isPaneActive,
+    renamingPath,
+    entries,
+    selectedPaths,
+    paneId,
+    selectItem,
+    handleStartRename,
+  ]);
+
+  // Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, item: FileEntry) => {
+    const dragItems = selectedPaths.includes(item.path) ? selectedPaths : [item.path];
+    e.dataTransfer.setData("application/foldale-paths", JSON.stringify(dragItems));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDropOnFolder = async (e: React.DragEvent, targetFolder: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTargetFolder(null);
+
+    const data = e.dataTransfer.getData("application/foldale-paths");
+    if (!data) return;
+
+    try {
+      const sources: string[] = JSON.parse(data);
+      if (sources.includes(targetFolder)) return; // Avoid dropping into self
+
+      await api.moveItems(sources, targetFolder, false);
+      await Promise.all([refreshPane("left"), refreshPane("right")]);
+    } catch (err: any) {
+      alert(`Move error: ${err}`);
+    }
+  };
+
+  const handleDropOnPane = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsPaneDragOver(false);
+
+    const currentPath = currentTab?.path || "/";
+    const data = e.dataTransfer.getData("application/foldale-paths");
+    if (!data) return;
+
+    try {
+      const sources: string[] = JSON.parse(data);
+      if (sources.includes(currentPath)) return;
+
+      await api.moveItems(sources, currentPath, false);
+      await Promise.all([refreshPane("left"), refreshPane("right")]);
+    } catch (err: any) {
+      alert(`Move error: ${err}`);
+    }
+  };
+
   // Render File Icon
   const renderIcon = (item: FileEntry) => {
     if (item.is_symlink) {
-      return <Link2 className="w-4 h-4 text-cyan-500 shrink-0" />;
+      return <Link2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
     }
     if (item.is_dir) {
-      return <Folder className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />;
+      return <Folder className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />;
     }
 
     const cat = getFileCategory(item.mime_type, item.extension);
     switch (cat) {
       case "image":
-        return <ImageIcon className="w-4 h-4 text-purple-400 shrink-0" />;
+        return <ImageIcon className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
       case "video":
-        return <Film className="w-4 h-4 text-rose-400 shrink-0" />;
+        return <Film className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
       case "audio":
-        return <Music className="w-4 h-4 text-emerald-400 shrink-0" />;
+        return <Music className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
       case "archive":
-        return <FileArchive className="w-4 h-4 text-amber-400 shrink-0" />;
+        return <FileArchive className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
       case "code":
-        return <FileCode className="w-4 h-4 text-blue-400 shrink-0" />;
+        return <FileCode className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
       case "text":
-        return <FileText className="w-4 h-4 text-muted-foreground shrink-0" />;
+        return <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
       case "pdf":
-        return <FileSpreadsheet className="w-4 h-4 text-red-400 shrink-0" />;
+        return <FileSpreadsheet className="w-3.5 h-3.5 text-red-400 shrink-0" />;
       default:
-        return <File className="w-4 h-4 text-muted-foreground shrink-0" />;
+        return <File className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
     }
   };
 
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-xs space-y-2">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <span>Reading directory contents...</span>
+        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <span className="font-mono text-[11px]">Loading folder...</span>
       </div>
     );
   }
@@ -272,18 +390,27 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
 
   return (
     <div
+      ref={listContainerRef}
       onClick={() => {
         setActivePane(paneId);
         clearSelection(paneId);
       }}
       onContextMenu={(e) => handleContextMenu(e, null)}
-      className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden relative select-none"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsPaneDragOver(true);
+      }}
+      onDragLeave={() => setIsPaneDragOver(false)}
+      onDrop={handleDropOnPane}
+      className={`flex-1 flex flex-col min-h-0 overflow-hidden relative select-none font-sans ${
+        isPaneDragOver ? "ring-2 ring-primary ring-inset bg-primary/5" : ""
+      }`}
     >
       {/* Detailed View */}
       {viewMode === "detailed" && (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Table Header */}
-          <div className="h-7 bg-muted/30 border-b border-border/40 grid grid-cols-12 px-3 text-[11px] font-medium text-muted-foreground items-center shrink-0">
+          {/* Table Header (Marta style) */}
+          <div className="h-6.5 bg-[#17181c] border-b border-[#25272e] grid grid-cols-12 px-3 text-[10px] font-semibold tracking-wider uppercase text-muted-foreground items-center shrink-0">
             <div
               onClick={(e) => {
                 e.stopPropagation();
@@ -291,9 +418,9 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
               }}
               className="col-span-6 flex items-center space-x-1 cursor-pointer hover:text-foreground"
             >
-              <span>Name</span>
+              <span>NAME</span>
               {sortField === "name" && (
-                sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />
+                sortDirection === "asc" ? <ArrowUp className="w-2.5 h-2.5 text-primary" /> : <ArrowDown className="w-2.5 h-2.5 text-primary" />
               )}
             </div>
 
@@ -304,9 +431,9 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
               }}
               className="col-span-2 flex items-center justify-end space-x-1 cursor-pointer hover:text-foreground text-right"
             >
-              <span>Size</span>
+              <span>SIZE</span>
               {sortField === "size" && (
-                sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />
+                sortDirection === "asc" ? <ArrowUp className="w-2.5 h-2.5 text-primary" /> : <ArrowDown className="w-2.5 h-2.5 text-primary" />
               )}
             </div>
 
@@ -317,31 +444,48 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
               }}
               className="col-span-3 flex items-center justify-end space-x-1 cursor-pointer hover:text-foreground text-right"
             >
-              <span>Date Modified</span>
+              <span>DATE</span>
               {sortField === "modified" && (
-                sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />
+                sortDirection === "asc" ? <ArrowUp className="w-2.5 h-2.5 text-primary" /> : <ArrowDown className="w-2.5 h-2.5 text-primary" />
               )}
             </div>
 
-            <div className="col-span-1 text-right text-[10px] hidden md:block">
-              <span>Mode</span>
+            <div className="col-span-1 text-right text-[9px] hidden md:block">
+              <span>PERM</span>
             </div>
           </div>
 
           {/* Table Rows */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-1 space-y-0.5 focus:outline-none">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-0.5 space-y-0.5 focus:outline-none">
             {entries.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground/60 text-xs italic">
-                {filterText ? "No matching items found" : "Empty directory"}
+              <div className="h-full flex items-center justify-center text-muted-foreground/50 text-xs italic">
+                {filterText ? "No matching items" : "Empty folder"}
               </div>
             ) : (
               entries.map((item) => {
                 const isSelected = selectedPaths.includes(item.path);
                 const isRenaming = renamingPath === item.path;
+                const isTargetDrop = dropTargetFolder === item.path;
 
                 return (
                   <div
                     key={item.path}
+                    ref={(el) => (rowRefs.current[item.path] = el)}
+                    draggable={!isRenaming}
+                    onDragStart={(e) => handleDragStart(e, item)}
+                    onDragOver={(e) => {
+                      if (item.is_dir) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDropTargetFolder(item.path);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (item.is_dir) setDropTargetFolder(null);
+                    }}
+                    onDrop={(e) => {
+                      if (item.is_dir) handleDropOnFolder(e, item.path);
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleItemClick(e, item);
@@ -351,48 +495,54 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                       handleItemDoubleClick(item);
                     }}
                     onContextMenu={(e) => handleContextMenu(e, item)}
-                    className={`h-7 px-2 rounded grid grid-cols-12 items-center text-xs transition-colors cursor-pointer ${
-                      isSelected
-                        ? "bg-primary/20 text-primary font-medium"
-                        : "text-foreground/90 hover:bg-muted/60"
-                    } ${item.is_hidden ? "opacity-60" : ""}`}
+                    className={`h-6.5 px-2 rounded flex items-center text-xs transition-colors cursor-pointer border ${
+                      isTargetDrop
+                        ? "bg-primary/20 border-primary ring-1 ring-primary"
+                        : isSelected
+                        ? isPaneActive
+                          ? "bg-amber-500/15 border-amber-500/50 text-amber-300 font-medium"
+                          : "bg-muted/70 border-border/70 text-foreground"
+                        : "border-transparent hover:bg-white/[0.04] text-foreground/90"
+                    } ${item.is_hidden ? "opacity-50" : ""}`}
                   >
-                    {/* Name column */}
-                    <div className="col-span-6 flex items-center space-x-2 truncate">
-                      {renderIcon(item)}
+                    <div className="w-full grid grid-cols-12 items-center">
+                      {/* Name column */}
+                      <div className="col-span-6 flex items-center space-x-2 truncate">
+                        {renderIcon(item)}
 
-                      {isRenaming ? (
-                        <input
-                          ref={renameInputRef}
-                          type="text"
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleConfirmRename();
-                            if (e.key === "Escape") setRenamingPath(null);
-                          }}
-                          onBlur={handleConfirmRename}
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-5 px-1 bg-background border border-primary text-foreground text-xs rounded outline-none w-full"
-                        />
-                      ) : (
-                        <span className="truncate text-[12px]">{item.name}</span>
-                      )}
-                    </div>
+                        {isRenaming ? (
+                          <input
+                            ref={renameInputRef}
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleConfirmRename();
+                              if (e.key === "Escape") setRenamingPath(null);
+                            }}
+                            onBlur={handleConfirmRename}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-5 px-1 bg-background border border-primary text-foreground text-xs rounded outline-none w-full font-sans"
+                          />
+                        ) : (
+                          <span className="truncate text-[11.5px] tracking-tight">{item.name}</span>
+                        )}
+                      </div>
 
-                    {/* Size column */}
-                    <div className="col-span-2 text-right text-[11px] text-muted-foreground font-mono truncate">
-                      {item.is_dir ? "—" : formatBytes(item.size)}
-                    </div>
+                      {/* Size column */}
+                      <div className="col-span-2 text-right text-[10.5px] text-muted-foreground font-mono truncate">
+                        {item.is_dir ? "—" : formatBytes(item.size)}
+                      </div>
 
-                    {/* Modified column */}
-                    <div className="col-span-3 text-right text-[11px] text-muted-foreground font-mono truncate">
-                      {formatDate(item.modified)}
-                    </div>
+                      {/* Modified column */}
+                      <div className="col-span-3 text-right text-[10.5px] text-muted-foreground font-mono truncate">
+                        {formatDate(item.modified)}
+                      </div>
 
-                    {/* Permissions column */}
-                    <div className="col-span-1 text-right text-[10px] text-muted-foreground/60 font-mono hidden md:block truncate">
-                      {item.permissions.slice(1, 4)}
+                      {/* Permissions column */}
+                      <div className="col-span-1 text-right text-[9.5px] text-muted-foreground/60 font-mono hidden md:block truncate">
+                        {item.permissions.slice(1, 4)}
+                      </div>
                     </div>
                   </div>
                 );
@@ -410,6 +560,9 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
             return (
               <div
                 key={item.path}
+                ref={(el) => (rowRefs.current[item.path] = el)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, item)}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleItemClick(e, item);
@@ -419,12 +572,14 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   handleItemDoubleClick(item);
                 }}
                 onContextMenu={(e) => handleContextMenu(e, item)}
-                className={`h-7 px-2.5 rounded flex items-center space-x-2 text-xs cursor-pointer w-48 truncate transition-colors ${
-                  isSelected ? "bg-primary/20 text-primary font-medium" : "hover:bg-muted/60 text-foreground/90"
-                } ${item.is_hidden ? "opacity-60" : ""}`}
+                className={`h-6.5 px-2.5 rounded flex items-center space-x-2 text-xs cursor-pointer w-48 truncate transition-colors border ${
+                  isSelected
+                    ? "bg-amber-500/15 border-amber-500/50 text-amber-300 font-medium"
+                    : "border-transparent hover:bg-white/[0.04] text-foreground/90"
+                } ${item.is_hidden ? "opacity-50" : ""}`}
               >
                 {renderIcon(item)}
-                <span className="truncate">{item.name}</span>
+                <span className="truncate text-[11.5px]">{item.name}</span>
               </div>
             );
           })}
@@ -439,6 +594,9 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
             return (
               <div
                 key={item.path}
+                ref={(el) => (rowRefs.current[item.path] = el)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, item)}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleItemClick(e, item);
@@ -450,15 +608,15 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                 onContextMenu={(e) => handleContextMenu(e, item)}
                 className={`flex flex-col items-center justify-center p-2.5 rounded-lg cursor-pointer transition-all border ${
                   isSelected
-                    ? "bg-primary/15 border-primary/40 text-primary shadow-xs"
-                    : "border-transparent hover:bg-muted/50 hover:border-border/50 text-foreground"
-                } ${item.is_hidden ? "opacity-60" : ""}`}
+                    ? "bg-amber-500/15 border-amber-500/60 text-amber-300 shadow-sm"
+                    : "border-transparent hover:bg-white/[0.04] text-foreground"
+                } ${item.is_hidden ? "opacity-50" : ""}`}
               >
-                <div className="scale-150 mb-2 mt-1">{renderIcon(item)}</div>
+                <div className="scale-125 mb-1.5 mt-1">{renderIcon(item)}</div>
                 <span className="text-[11px] text-center truncate max-w-full font-medium" title={item.name}>
                   {item.name}
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                <span className="text-[9.5px] text-muted-foreground font-mono mt-0.5">
                   {item.is_dir ? "Folder" : formatBytes(item.size)}
                 </span>
               </div>
@@ -471,7 +629,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       {contextMenu.visible && (
         <div
           style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-          className="fixed z-50 w-52 bg-popover/95 backdrop-blur-md border border-border rounded-lg shadow-xl py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 w-52 bg-[#1c1d22]/95 backdrop-blur-md border border-[#2d2f38] rounded-lg shadow-2xl py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-100 text-foreground"
           onClick={(e) => e.stopPropagation()}
         >
           {contextMenu.targetItem ? (
@@ -481,7 +639,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   handleItemDoubleClick(contextMenu.targetItem!);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Open</span>
@@ -492,7 +650,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   setPreviewPath(contextMenu.targetItem!.path);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Eye className="w-3.5 h-3.5" />
@@ -506,20 +664,20 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   await api.revealInOS(contextMenu.targetItem!.path);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <FolderArchive className="w-3.5 h-3.5" />
                 <span>Reveal in Native OS</span>
               </button>
 
-              <div className="h-[1px] bg-border/60 my-1" />
+              <div className="h-[1px] bg-border/40 my-1" />
 
               <button
                 onClick={() => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   copySelection();
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Copy className="w-3.5 h-3.5" />
@@ -533,7 +691,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   cutSelection();
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Scissors className="w-3.5 h-3.5" />
@@ -547,7 +705,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   duplicateSelection();
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>Duplicate</span>
@@ -558,7 +716,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   handleStartRename(contextMenu.targetItem!);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Edit2 className="w-3.5 h-3.5" />
@@ -573,14 +731,14 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                     setContextMenu((p) => ({ ...p, visible: false }));
                     setBatchRenameOpen(true);
                   }}
-                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/20 hover:text-primary transition-colors"
+                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
                 >
                   <Edit2 className="w-3.5 h-3.5 text-amber-500" />
                   <span>Batch Rename ({selectedPaths.length})</span>
                 </button>
               )}
 
-              <div className="h-[1px] bg-border/60 my-1" />
+              <div className="h-[1px] bg-border/40 my-1" />
 
               {/* Archive Actions */}
               <button
@@ -596,7 +754,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                     alert(`Compress failed: ${err}`);
                   }
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <Archive className="w-3.5 h-3.5" />
                 <span>Compress to ZIP</span>
@@ -614,14 +772,14 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                       alert(`Extract failed: ${err}`);
                     }
                   }}
-                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-primary/20 hover:text-primary transition-colors text-amber-500"
+                  className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-amber-500/20 hover:text-amber-300 transition-colors text-amber-400"
                 >
                   <Archive className="w-3.5 h-3.5" />
                   <span>Extract ZIP Here</span>
                 </button>
               )}
 
-              <div className="h-[1px] bg-border/60 my-1" />
+              <div className="h-[1px] bg-border/40 my-1" />
 
               <button
                 onClick={() => {
@@ -651,14 +809,14 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                 <span className="text-[10px] text-muted-foreground font-mono">⇧⌫</span>
               </button>
 
-              <div className="h-[1px] bg-border/60 my-1" />
+              <div className="h-[1px] bg-border/40 my-1" />
 
               <button
                 onClick={() => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   setPropertiesPath(contextMenu.targetItem!.path);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Info className="w-3.5 h-3.5" />
@@ -669,14 +827,13 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
             </>
           ) : (
             <>
-              {/* Empty background context menu */}
               {clipboard && (
                 <button
                   onClick={() => {
                     setContextMenu((p) => ({ ...p, visible: false }));
                     pasteClipboard();
                   }}
-                  className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                  className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
                 >
                   <div className="flex items-center space-x-2">
                     <ClipboardPaste className="w-3.5 h-3.5" />
@@ -691,7 +848,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   refreshPane(paneId);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <span>Refresh</span>
                 <span className="text-[10px] text-muted-foreground font-mono">F5</span>
@@ -702,7 +859,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
                   setContextMenu((p) => ({ ...p, visible: false }));
                   selectAll(paneId);
                 }}
-                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-primary/20 hover:text-primary transition-colors"
+                className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
               >
                 <span>Select All</span>
                 <span className="text-[10px] text-muted-foreground font-mono">⌘A</span>

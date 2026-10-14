@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Plus,
   Trash2,
-  Folder,
 } from "lucide-react";
 import { useFileManagerStore } from "../store/useFileManagerStore";
 import { formatBytes } from "../utils/formatters";
@@ -60,13 +59,13 @@ export const Sidebar: React.FC = () => {
 
   if (sidebarCollapsed) {
     return (
-      <div className="w-10 border-r border-border bg-card/40 flex flex-col items-center py-3 select-none shrink-0 transition-all">
+      <div className="w-9 border-r border-[#24262d] bg-[#141518] flex flex-col items-center py-2 select-none shrink-0 transition-all">
         <button
           onClick={toggleSidebar}
           title="Expand Sidebar"
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     );
@@ -86,7 +85,7 @@ export const Sidebar: React.FC = () => {
     : [];
 
   return (
-    <aside className="w-56 border-r border-border bg-card/40 flex flex-col select-none shrink-0 overflow-hidden text-xs">
+    <aside className="w-52 border-r border-[#24262d] bg-[#141518] flex flex-col select-none shrink-0 overflow-hidden text-xs">
       {/* Top Header of Sidebar */}
       <div className="h-9 px-3 flex items-center justify-between border-b border-border/40 text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
         <span>Places</span>

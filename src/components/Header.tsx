@@ -14,7 +14,6 @@ import {
   Moon,
   Laptop,
   Command,
-  Sliders,
   FolderSync,
 } from "lucide-react";
 import { useFileManagerStore } from "../store/useFileManagerStore";
@@ -60,7 +59,7 @@ export const Header: React.FC = () => {
   const activeTransfers = transferQueue.filter((t) => t.status === "running" || t.status === "queued");
 
   return (
-    <header className="h-12 border-b border-border bg-card/60 backdrop-blur-md px-3 flex items-center justify-between select-none shrink-0 z-20">
+    <header className="h-10 border-b border-[#24262d] bg-[#141518] px-3 flex items-center justify-between select-none shrink-0 z-20">
       {/* Left: App Branding & Layout Switcher */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2">

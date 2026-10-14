@@ -181,6 +181,11 @@ pub async fn read_text_preview(path: String, max_bytes: Option<usize>) -> Result
     fs_ops::read_text_preview(&path, limit)
 }
 
+#[tauri::command]
+pub async fn read_file_base64(path: String) -> Result<String, String> {
+    fs_ops::read_file_base64(&path)
+}
+
 // --- Search Commands ---
 
 #[tauri::command]

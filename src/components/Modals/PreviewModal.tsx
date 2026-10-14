@@ -23,6 +23,7 @@ export const PreviewModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [fileInfo, setFileInfo] = useState<DetailedFileInfo | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<string | null>(null);
   const [archiveEntries, setArchiveEntries] = useState<ArchiveEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,7 @@ export const PreviewModal: React.FC = () => {
     if (!previewPath) {
       setFileInfo(null);
       setTextContent(null);
+      setImageData(null);
       setArchiveEntries(null);
       setError(null);
       return;
@@ -47,7 +49,10 @@ export const PreviewModal: React.FC = () => {
 
         const cat = getFileCategory(info.mime_type, info.extension);
 
-        if (cat === "text" || cat === "code") {
+        if (cat === "image") {
+          const b64 = await api.readFileBase64(previewPath);
+          if (isMounted) setImageData(b64);
+        } else if (cat === "text" || cat === "code") {
           const content = await api.readTextPreview(previewPath, 256 * 1024);
           if (isMounted) setTextContent(content);
         } else if (cat === "archive" && info.extension === "zip") {
@@ -145,16 +150,16 @@ export const PreviewModal: React.FC = () => {
             <>
               {/* Image Preview */}
               {cat === "image" && (
-                <div className="flex-1 flex items-center justify-center overflow-hidden bg-black/20 rounded-lg p-2">
-                  <img
-                    src={`tauri://localhost/${encodeURIComponent(previewPath)}`}
-                    alt={fileName}
-                    className="max-h-[60vh] max-w-full object-contain rounded shadow-md"
-                    onError={(e) => {
-                      // Fallback when tauri protocol isn't mapped
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
+                <div className="flex-1 flex flex-col items-center justify-center overflow-hidden bg-black/40 rounded-lg p-2">
+                  {imageData ? (
+                    <img
+                      src={imageData}
+                      alt={fileName}
+                      className="max-h-[60vh] max-w-full object-contain rounded shadow-lg"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground text-xs">Loading image...</div>
+                  )}
                   <div className="text-center text-xs text-muted-foreground mt-2">
                     <p>{previewPath}</p>
                   </div>

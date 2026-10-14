@@ -11,7 +11,7 @@ import {
   LayoutGrid,
   ChevronRight as BreadcrumbSeparator,
 } from "lucide-react";
-import { PaneId, ViewMode } from "../../types";
+import { PaneId } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
 
 interface BreadcrumbsProps {
@@ -79,7 +79,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
   return (
     <div
       onClick={() => setActivePane(paneId)}
-      className="h-9 px-2 bg-background border-b border-border/40 flex items-center justify-between space-x-2 select-none text-xs shrink-0"
+      className="h-8 px-2 bg-[#18191e] border-b border-[#25272e] flex items-center justify-between space-x-2 select-none text-xs shrink-0"
     >
       {/* Navigation Buttons */}
       <div className="flex items-center space-x-0.5">
@@ -87,7 +87,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
           onClick={() => navigateBack(paneId)}
           disabled={!canGoBack}
           title="Back (⌘[ or Alt+Left)"
-          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
@@ -95,28 +95,28 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
           onClick={() => navigateForward(paneId)}
           disabled={!canGoForward}
           title="Forward (⌘] or Alt+Right)"
-          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => navigateUp(paneId)}
           title="Up to Parent Directory (Backspace / Alt+Up)"
-          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
         >
           <ArrowUp className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => refreshPane(paneId)}
           title="Refresh (F5)"
-          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {/* Address Bar / Breadcrumbs */}
-      <div className="flex-1 min-w-0 h-6.5 bg-muted/40 hover:bg-muted/60 border border-border/50 rounded-md flex items-center px-1.5 transition-colors overflow-hidden">
+      <div className="flex-1 min-w-0 h-6 bg-[#131417] hover:bg-[#15161a] border border-[#2b2d36] rounded flex items-center px-1.5 transition-colors overflow-hidden">
         {isEditingAddress ? (
           <form onSubmit={handleAddressSubmit} className="w-full flex items-center">
             <input
@@ -131,7 +131,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
                 }
               }}
               onBlur={() => setIsEditingAddress(false)}
-              className="w-full bg-transparent border-none outline-none text-xs text-foreground font-mono"
+              className="w-full bg-transparent border-none outline-none text-[11px] text-foreground font-mono"
             />
           </form>
         ) : (
@@ -141,14 +141,14 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
           >
             {segments.map((seg, idx) => (
               <React.Fragment key={seg.path}>
-                {idx > 0 && <BreadcrumbSeparator className="w-3 h-3 text-muted-foreground/60 shrink-0" />}
+                {idx > 0 && <BreadcrumbSeparator className="w-3 h-3 text-muted-foreground/40 shrink-0" />}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigateTo(paneId, seg.path, true);
                   }}
-                  className="px-1 py-0.5 rounded hover:bg-primary/10 hover:text-primary transition-colors truncate max-w-[120px] font-medium text-foreground/80 hover:text-foreground text-[11px]"
+                  className="px-1 py-0.2 rounded hover:bg-amber-500/15 hover:text-amber-300 transition-colors truncate max-w-[130px] font-medium text-foreground/80 hover:text-foreground text-[10.5px]"
                 >
                   {seg.name}
                 </button>
@@ -159,19 +159,19 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
       </div>
 
       {/* Inline Filter */}
-      <div className="relative flex items-center w-28 md:w-36 h-6.5">
-        <Search className="w-3 h-3 absolute left-2 text-muted-foreground pointer-events-none" />
+      <div className="relative flex items-center w-28 md:w-36 h-6">
+        <Search className="w-3 h-3 absolute left-1.5 text-muted-foreground/60 pointer-events-none" />
         <input
           type="text"
           placeholder="Filter..."
           value={filterText}
           onChange={(e) => setTabFilter(paneId, e.target.value)}
-          className="w-full h-full pl-6 pr-5 bg-muted/40 border border-border/50 rounded-md text-[11px] text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/50"
+          className="w-full h-full pl-5 pr-4 bg-[#131417] border border-[#2b2d36] rounded text-[10.5px] text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-amber-500/60"
         />
         {filterText && (
           <button
             onClick={() => setTabFilter(paneId, "")}
-            className="absolute right-1.5 p-0.5 text-muted-foreground hover:text-foreground"
+            className="absolute right-1 p-0.5 text-muted-foreground hover:text-foreground"
           >
             <X className="w-2.5 h-2.5" />
           </button>
@@ -179,13 +179,13 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
       </div>
 
       {/* View Mode Buttons */}
-      <div className="flex items-center bg-muted/50 p-0.5 rounded border border-border/40 shrink-0">
+      <div className="flex items-center bg-[#131417] p-0.5 rounded border border-[#2b2d36] shrink-0">
         <button
           onClick={() => setTabViewMode(paneId, "detailed")}
           title="Details view"
           className={`p-1 rounded text-xs transition-colors ${
             viewMode === "detailed"
-              ? "bg-background text-foreground shadow-xs font-medium"
+              ? "bg-[#252730] text-amber-400 shadow-xs font-medium"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -196,7 +196,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
           title="List view"
           className={`p-1 rounded text-xs transition-colors ${
             viewMode === "list"
-              ? "bg-background text-foreground shadow-xs font-medium"
+              ? "bg-[#252730] text-amber-400 shadow-xs font-medium"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -207,7 +207,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ paneId }) => {
           title="Grid view"
           className={`p-1 rounded text-xs transition-colors ${
             viewMode === "grid"
-              ? "bg-background text-foreground shadow-xs font-medium"
+              ? "bg-[#252730] text-amber-400 shadow-xs font-medium"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >

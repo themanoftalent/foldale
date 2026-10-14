@@ -4,15 +4,15 @@
 
 @layer base {
   :root {
-    --background: #ffffff;
+    --background: #f4f5f8;
     --foreground: #1c1917;
-    --card: #f8fafc;
+    --card: #ffffff;
     --card-foreground: #1c1917;
     --popover: #ffffff;
     --popover-foreground: #1c1917;
     --primary: #f59e0b;
     --primary-foreground: #ffffff;
-    --secondary: #f1f5f9;
+    --secondary: #e2e8f0;
     --secondary-foreground: #0f172a;
     --muted: #f1f5f9;
     --muted-foreground: #64748b;
@@ -25,25 +25,26 @@
     --ring: #f59e0b;
   }
 
+  /* Marta.app True Dark Charcoal Palette */
   .dark {
-    --background: #121316;
-    --foreground: #f8fafc;
-    --card: #18191e;
-    --card-foreground: #f8fafc;
-    --popover: #1c1d22;
-    --popover-foreground: #f8fafc;
-    --primary: #f59e0b;
+    --background: #141518; /* Marta window matte background */
+    --foreground: #f3f4f6;
+    --card: #1a1b20; /* Marta active pane background */
+    --card-foreground: #f3f4f6;
+    --popover: #1f2026;
+    --popover-foreground: #f3f4f6;
+    --primary: #f59e0b; /* Marta iconic amber */
     --primary-foreground: #000000;
-    --secondary: #24262d;
-    --secondary-foreground: #f8fafc;
-    --muted: #24262d;
-    --muted-foreground: #94a3b8;
-    --accent: #24262d;
-    --accent-foreground: #f8fafc;
+    --secondary: #22242b;
+    --secondary-foreground: #f3f4f6;
+    --muted: #22242b;
+    --muted-foreground: #838896;
+    --accent: #262831;
+    --accent-foreground: #f3f4f6;
     --destructive: #f43f5e;
     --destructive-foreground: #ffffff;
-    --border: #2e3039;
-    --input: #2e3039;
+    --border: #282a33;
+    --input: #1a1b20;
     --ring: #f59e0b;
   }
 
@@ -72,8 +73,8 @@
 
 /* Custom minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {

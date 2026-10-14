@@ -134,6 +134,13 @@ export const api = {
     return `Preview of ${path}\nCreated for Foldale dual-pane file manager.`;
   },
 
+  readFileBase64: async (path: string): Promise<string> => {
+    if (isTauriEnvironment()) {
+      return await invoke<string>("read_file_base64", { path });
+    }
+    return "";
+  },
+
   searchDirectory: async (query: SearchQuery): Promise<SearchResultEntry[]> => {
     if (isTauriEnvironment()) {
       return await invoke<SearchResultEntry[]>("search_directory", { query });

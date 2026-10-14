@@ -49,7 +49,7 @@ export const App: React.FC = () => {
         <Sidebar />
 
         {/* Panes Container */}
-        <main className="flex-1 flex min-w-0 min-h-0 overflow-hidden p-1.5 gap-1.5 bg-muted/20">
+        <main className="flex-1 flex min-w-0 min-h-0 overflow-hidden p-1 gap-1 bg-[#141518]">
           {layoutMode === "dual-horizontal" && (
             <>
               <FilePane paneId="left" />

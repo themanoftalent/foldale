@@ -1,5 +1,5 @@
 import React from "react";
-import { HardDrive, CheckCircle2, AlertCircle } from "lucide-react";
+import { HardDrive, AlertCircle } from "lucide-react";
 import { PaneId } from "../../types";
 import { useFileManagerStore } from "../../store/useFileManagerStore";
 import { formatBytes } from "../../utils/formatters";
@@ -27,12 +27,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({ paneId }) => {
   const currentDrive = mountedDrives.find((d) => currentPath.startsWith(d.mount_point));
 
   return (
-    <div className="h-6 bg-muted/40 border-t border-border/40 px-2 flex items-center justify-between text-[11px] text-muted-foreground select-none shrink-0 font-mono">
+    <div className="h-5.5 bg-[#141518] border-t border-[#24262d] px-2 flex items-center justify-between text-[10.5px] text-muted-foreground select-none shrink-0 font-mono">
       {/* Left: Counts and Selection */}
-      <div className="flex items-center space-x-3">
-        <span className={`px-1 rounded text-[10px] uppercase font-bold tracking-wider ${
-          isPaneActive ? "bg-primary/20 text-primary" : "text-muted-foreground/60"
-        }`}>
+      <div className="flex items-center space-x-2.5">
+        <span
+          className={`px-1 py-0.2 rounded text-[9px] uppercase font-bold tracking-wider ${
+            isPaneActive ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground/40 bg-white/[0.03]"
+          }`}
+        >
           {paneId}
         </span>
 
@@ -42,8 +44,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({ paneId }) => {
         </span>
 
         {selectedPaths.length > 0 && (
-          <span className="text-foreground font-medium">
-            {selectedPaths.length} selected ({formatBytes(selectedBytes)})
+          <span className="text-amber-300 font-medium">
+            • {selectedPaths.length} selected ({formatBytes(selectedBytes)})
           </span>
         )}
       </div>
@@ -53,15 +55,15 @@ export const StatusBar: React.FC<StatusBarProps> = ({ paneId }) => {
         {listing && !listing.is_writable && (
           <span className="flex items-center text-amber-500 space-x-1" title="Read-only directory">
             <AlertCircle className="w-3 h-3" />
-            <span className="text-[10px]">Read-only</span>
+            <span className="text-[9.5px]">Read-only</span>
           </span>
         )}
 
         {currentDrive && (
-          <div className="flex items-center space-x-1.5" title={`Free space on ${currentDrive.mount_point}`}>
+          <div className="flex items-center space-x-1" title={`Free space on ${currentDrive.mount_point}`}>
             <HardDrive className="w-3 h-3 text-muted-foreground" />
             <span>
-              {formatBytes(currentDrive.available_bytes)} free of {formatBytes(currentDrive.total_bytes)}
+              {formatBytes(currentDrive.available_bytes)} free / {formatBytes(currentDrive.total_bytes)}
             </span>
           </div>
         )}

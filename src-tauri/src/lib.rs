@@ -35,6 +35,7 @@ pub fn run() {
             commands::duplicate_item,
             commands::create_symlink,
             commands::read_text_preview,
+            commands::read_file_base64,
             commands::search_directory,
             commands::list_archive_contents,
             commands::create_zip_archive,

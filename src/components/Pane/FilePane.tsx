@@ -17,12 +17,17 @@ export const FilePane: React.FC<FilePaneProps> = ({ paneId }) => {
   return (
     <div
       onClick={() => setActivePane(paneId)}
-      className={`flex-1 flex flex-col min-w-0 min-h-0 bg-background border transition-all duration-150 overflow-hidden ${
+      className={`flex-1 flex flex-col min-w-0 min-h-0 rounded-lg border transition-all duration-150 overflow-hidden relative shadow-sm ${
         isActive
-          ? "border-primary/60 shadow-xs ring-1 ring-primary/20"
-          : "border-border/60 opacity-95"
+          ? "border-primary/70 bg-[#1a1b20] ring-1 ring-primary/30"
+          : "border-border/40 bg-[#131417] opacity-90 hover:opacity-100"
       }`}
     >
+      {/* Top subtle Marta active indicator strip */}
+      {isActive && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 z-30" />
+      )}
+
       {/* Pane Tab Bar */}
       <TabBar paneId={paneId} />
 
