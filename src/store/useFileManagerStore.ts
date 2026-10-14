@@ -3,6 +3,8 @@ import { api } from "../services/tauriBridge";
 import {
   Bookmark,
   ClipboardItem,
+  ConflictItem,
+  ConflictPolicy,
   DirectoryListing,
   DriveInfo,
   LayoutMode,
@@ -21,6 +23,18 @@ export interface PaneState {
   listing: DirectoryListing | null;
   loading: boolean;
   error: string | null;
+}
+
+export interface PendingConflict {
+  sources: string[];
+  destination: string;
+  isMove: boolean;
+  conflicts: ConflictItem[];
+}
+
+export interface PendingDelete {
+  paths: string[];
+  permanent: boolean;
 }
 
 interface FileManagerStore {
@@ -55,6 +69,11 @@ interface FileManagerStore {
   newFolderOpen: boolean;
   newFileOpen: boolean;
 
+  // Safety & Conflict Management
+  pendingConflict: PendingConflict | null;
+  pendingDelete: PendingDelete | null;
+  undoToastMessage: string | null;
+
   // Actions
   init: () => Promise<void>;
   setActivePane: (pane: PaneId) => void;
@@ -83,7 +102,7 @@ interface FileManagerStore {
   setTabSorting: (pane: PaneId, field: SortField, dir?: SortDirection) => void;
 
   // Selection
-  selectItem: (pane: PaneId, path: string, multi?: boolean, range?: boolean) => void;
+  selectItem: (pane: PaneId, path: string, multi?: boolean, range?: boolean, orderedPaths?: string[]) => void;
   selectAll: (pane: PaneId) => void;
   clearSelection: (pane: PaneId) => void;
   invertSelection: (pane: PaneId) => void;
@@ -94,6 +113,16 @@ interface FileManagerStore {
   pasteClipboard: () => Promise<void>;
   deleteSelection: (permanent?: boolean) => Promise<void>;
   duplicateSelection: () => Promise<void>;
+
+  // Safe Conflict & Delete Handling
+  setPendingConflict: (conflict: PendingConflict | null) => void;
+  resolveConflict: (policy: ConflictPolicy, applyToAll: boolean) => Promise<void>;
+  setPendingDelete: (del: PendingDelete | null) => void;
+  confirmDelete: () => Promise<void>;
+
+  // Undo Management
+  setUndoToastMessage: (msg: string | null) => void;
+  undoLastOperation: () => Promise<void>;
 
   // Bookmarks
   addBookmark: (name: string, path: string, icon?: string) => Promise<void>;
@@ -161,8 +190,30 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   newFolderOpen: false,
   newFileOpen: false,
 
+  pendingConflict: null,
+  pendingDelete: null,
+  undoToastMessage: null,
+
   init: async () => {
     try {
+      // Load persistent settings
+      const settings = await api.getAllSettings();
+      if (settings.theme && (settings.theme === "dark" || settings.theme === "light" || settings.theme === "system")) {
+        set({ theme: settings.theme });
+      }
+      if (settings.accentColor) {
+        set({ accentColor: settings.accentColor as any });
+      }
+      if (settings.layoutMode) {
+        set({ layoutMode: settings.layoutMode as any });
+      }
+      if (settings.showHiddenFiles !== undefined) {
+        set({ showHiddenFiles: settings.showHiddenFiles === "true" });
+      }
+      if (settings.density) {
+        set({ density: settings.density as any });
+      }
+
       const locations = await api.getSystemLocations();
       const drives = await api.getMountedDrives();
       const bookmarks = await api.getBookmarks();
@@ -196,9 +247,13 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
 
   setActivePane: (pane) => set({ activePane: pane }),
   toggleActivePane: () => set((state) => ({ activePane: state.activePane === "left" ? "right" : "left" })),
-  setLayoutMode: (mode) => set({ layoutMode: mode }),
+  setLayoutMode: (mode) => {
+    set({ layoutMode: mode });
+    api.setSetting("layoutMode", mode);
+  },
   setShowHiddenFiles: (show) => {
     set({ showHiddenFiles: show });
+    api.setSetting("showHiddenFiles", String(show));
     get().refreshPane("left");
     get().refreshPane("right");
   },
@@ -206,9 +261,18 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     const show = !get().showHiddenFiles;
     get().setShowHiddenFiles(show);
   },
-  setTheme: (theme) => set({ theme }),
-  setAccentColor: (accentColor) => set({ accentColor }),
-  setDensity: (density) => set({ density }),
+  setTheme: (theme) => {
+    set({ theme });
+    api.setSetting("theme", theme);
+  },
+  setAccentColor: (accentColor) => {
+    set({ accentColor });
+    api.setSetting("accentColor", accentColor);
+  },
+  setDensity: (density) => {
+    set({ density });
+    api.setSetting("density", density);
+  },
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
   navigateTo: async (pane, path, addToHistory = true) => {
@@ -433,7 +497,7 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
   },
 
   // Selection
-  selectItem: (pane, path, multi = false, range = false) => {
+  selectItem: (pane, path, multi = false, range = false, orderedPaths?: string[]) => {
     const paneKey = pane === "left" ? "leftPane" : "rightPane";
     set((s) => {
       const p = s[paneKey];
@@ -444,13 +508,13 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
             if (t.id !== p.activeTabId) return t;
             let newSelection = [...t.selectedPaths];
 
-            if (range && t.cursorPath && p.listing) {
-              const entries = p.listing.entries;
-              const fromIdx = entries.findIndex((e) => e.path === t.cursorPath);
-              const toIdx = entries.findIndex((e) => e.path === path);
+            if (range && t.cursorPath) {
+              const pathsList = orderedPaths || p.listing?.entries.map((e) => e.path) || [];
+              const fromIdx = pathsList.indexOf(t.cursorPath);
+              const toIdx = pathsList.indexOf(path);
               if (fromIdx !== -1 && toIdx !== -1) {
                 const [start, end] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
-                newSelection = entries.slice(start, end + 1).map((e) => e.path);
+                newSelection = pathsList.slice(start, end + 1);
               }
             } else if (multi) {
               if (newSelection.includes(path)) {
@@ -558,12 +622,35 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     const destDir = activePane.listing?.current_path;
     if (!destDir) return;
 
+    const sources = state.clipboard.paths;
+    const isMove = state.clipboard.operation === "cut";
+
     try {
-      if (state.clipboard.operation === "copy") {
-        await api.copyItems(state.clipboard.paths, destDir, true);
+      // Check for conflicts first
+      const conflicts = await api.checkConflicts(sources, destDir);
+      if (conflicts.length > 0) {
+        set({
+          pendingConflict: {
+            sources,
+            destination: destDir,
+            isMove,
+            conflicts,
+          },
+        });
+        return;
+      }
+
+      if (isMove) {
+        await api.moveItemsWithPolicy(sources, destDir, "replace");
+        set({
+          clipboard: null,
+          undoToastMessage: `Moved ${sources.length} item(s)`,
+        });
       } else {
-        await api.moveItems(state.clipboard.paths, destDir, true);
-        set({ clipboard: null });
+        await api.copyItemsWithPolicy(sources, destDir, "keep_both");
+        set({
+          undoToastMessage: `Copied ${sources.length} item(s)`,
+        });
       }
 
       await get().refreshPane("left");
@@ -579,8 +666,15 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
     const tab = activePane.tabs.find((t) => t.id === activePane.activeTabId);
     if (!tab || tab.selectedPaths.length === 0) return;
 
+    if (permanent) {
+      // Show confirmation dialog before permanently deleting
+      set({ pendingDelete: { paths: tab.selectedPaths, permanent: true } });
+      return;
+    }
+
     try {
-      await api.deleteItems(tab.selectedPaths, permanent);
+      await api.deleteItems(tab.selectedPaths, false);
+      set({ undoToastMessage: `Moved ${tab.selectedPaths.length} item(s) to Trash` });
       await get().refreshPane("left");
       await get().refreshPane("right");
     } catch (err) {
@@ -601,6 +695,64 @@ export const useFileManagerStore = create<FileManagerStore>((set, get) => ({
       await get().refreshPane(state.activePane);
     } catch (err) {
       console.error("Duplicate failed:", err);
+    }
+  },
+
+  // Safe Conflict & Delete Handling
+  setPendingConflict: (conflict) => set({ pendingConflict: conflict }),
+  resolveConflict: async (policy: ConflictPolicy, _applyToAll: boolean) => {
+    const state = get();
+    const pending = state.pendingConflict;
+    if (!pending) return;
+
+    try {
+      if (pending.isMove) {
+        await api.moveItemsWithPolicy(pending.sources, pending.destination, policy);
+        set({
+          clipboard: null,
+          undoToastMessage: `Moved ${pending.sources.length} item(s)`,
+        });
+      } else {
+        await api.copyItemsWithPolicy(pending.sources, pending.destination, policy);
+        set({
+          undoToastMessage: `Copied ${pending.sources.length} item(s)`,
+        });
+      }
+
+      set({ pendingConflict: null });
+      await get().refreshPane("left");
+      await get().refreshPane("right");
+    } catch (err) {
+      console.error("Failed to resolve conflict:", err);
+    }
+  },
+
+  setPendingDelete: (del) => set({ pendingDelete: del }),
+  confirmDelete: async () => {
+    const state = get();
+    const pending = state.pendingDelete;
+    if (!pending) return;
+
+    try {
+      await api.deleteItems(pending.paths, pending.permanent);
+      set({ pendingDelete: null });
+      await get().refreshPane("left");
+      await get().refreshPane("right");
+    } catch (err) {
+      console.error("Permanent delete failed:", err);
+    }
+  },
+
+  // Undo Management
+  setUndoToastMessage: (msg) => set({ undoToastMessage: msg }),
+  undoLastOperation: async () => {
+    try {
+      const msg = await api.undoLastOperation();
+      set({ undoToastMessage: msg });
+      await get().refreshPane("left");
+      await get().refreshPane("right");
+    } catch (err: any) {
+      console.error("Undo failed:", err);
     }
   },
 

@@ -1,6 +1,6 @@
 [package]
 name = "foldale"
-version = "1.0.0"
+version = "2.0.0"
 description = "Foldale - A Modern Dual-Pane File Manager"
 authors = ["Foldale Team"]
 edition = "2021"

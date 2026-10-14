@@ -3,6 +3,8 @@ import {
   ArchiveEntry,
   BatchRenameResult,
   Bookmark,
+  ConflictItem,
+  ConflictPolicy,
   DetailedFileInfo,
   DirectoryListing,
   DirSizeResult,
@@ -92,6 +94,50 @@ export const api = {
       return await invoke<BatchRenameResult>("batch_rename", { operations });
     }
     return { succeeded: operations.map((o) => o.new_path), failed: [] };
+  },
+
+  checkConflicts: async (sources: string[], destinationDir: string): Promise<ConflictItem[]> => {
+    if (isTauriEnvironment()) {
+      return await invoke<ConflictItem[]>("check_conflicts", { sources, destinationDir });
+    }
+    return [];
+  },
+
+  copyItemsWithPolicy: async (
+    sources: string[],
+    destinationDir: string,
+    policy: ConflictPolicy
+  ): Promise<[string, string][]> => {
+    if (isTauriEnvironment()) {
+      return await invoke<[string, string][]>("copy_items_with_policy", {
+        sources,
+        destinationDir,
+        policy,
+      });
+    }
+    return sources.map((s) => [s, `${destinationDir}/${s.split("/").pop()}`]);
+  },
+
+  moveItemsWithPolicy: async (
+    sources: string[],
+    destinationDir: string,
+    policy: ConflictPolicy
+  ): Promise<[string, string][]> => {
+    if (isTauriEnvironment()) {
+      return await invoke<[string, string][]>("move_items_with_policy", {
+        sources,
+        destinationDir,
+        policy,
+      });
+    }
+    return sources.map((s) => [s, `${destinationDir}/${s.split("/").pop()}`]);
+  },
+
+  undoLastOperation: async (): Promise<string> => {
+    if (isTauriEnvironment()) {
+      return await invoke<string>("undo_last_operation");
+    }
+    return "Undone";
   },
 
   copyItems: async (sources: string[], destinationDir: string, overwrite: boolean): Promise<string[]> => {
@@ -267,6 +313,20 @@ export const api = {
       await invoke("set_setting", { key, value });
     }
     localStorage.setItem(`foldale_${key}`, value);
+  },
+
+  getAllSettings: async (): Promise<Record<string, string>> => {
+    if (isTauriEnvironment()) {
+      return await invoke<Record<string, string>>("get_all_settings");
+    }
+    const res: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("foldale_")) {
+        res[k.replace("foldale_", "")] = localStorage.getItem(k) || "";
+      }
+    }
+    return res;
   },
 
   getOperationLogs: async (limit?: number): Promise<OperationLog[]> => {

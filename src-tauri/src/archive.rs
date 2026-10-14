@@ -14,12 +14,12 @@ pub fn list_archive_contents(archive_path: &str) -> Result<Vec<ArchiveEntry>, St
         return Err("Archive file not found".to_string());
     }
 
-    let ext = path
-        .extension()
-        .map(|e| e.to_string_lossy().to_lowercase())
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
         .unwrap_or_default();
 
-    if ext == "zip" {
+    if file_name.ends_with(".zip") {
         let file = File::open(path).map_err(|e| e.to_string())?;
         let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
         let mut entries = Vec::new();
@@ -36,8 +36,55 @@ pub fn list_archive_contents(archive_path: &str) -> Result<Vec<ArchiveEntry>, St
         }
 
         Ok(entries)
+    } else if file_name.ends_with(".tar.gz") || file_name.ends_with(".tgz") {
+        let file = File::open(path).map_err(|e| e.to_string())?;
+        let gz = flate2::read::GzDecoder::new(file);
+        let mut tar = tar::Archive::new(gz);
+        let mut entries = Vec::new();
+
+        for entry in tar.entries().map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let header = entry.header();
+            let is_dir = header.entry_type().is_dir();
+            let size = header.size().unwrap_or(0);
+            let path_bytes = entry.path_bytes();
+            let name = String::from_utf8_lossy(&path_bytes).to_string();
+
+            entries.push(ArchiveEntry {
+                name,
+                is_dir,
+                size,
+                compressed_size: 0,
+                modified: header.mtime().ok().map(|m| m as i64),
+            });
+        }
+
+        Ok(entries)
+    } else if file_name.ends_with(".tar") {
+        let file = File::open(path).map_err(|e| e.to_string())?;
+        let mut tar = tar::Archive::new(file);
+        let mut entries = Vec::new();
+
+        for entry in tar.entries().map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let header = entry.header();
+            let is_dir = header.entry_type().is_dir();
+            let size = header.size().unwrap_or(0);
+            let path_bytes = entry.path_bytes();
+            let name = String::from_utf8_lossy(&path_bytes).to_string();
+
+            entries.push(ArchiveEntry {
+                name,
+                is_dir,
+                size,
+                compressed_size: size,
+                modified: header.mtime().ok().map(|m| m as i64),
+            });
+        }
+
+        Ok(entries)
     } else {
-        Err(format!("Unsupported archive preview format: .{}", ext))
+        Err(format!("Unsupported archive preview format: {}", file_name))
     }
 }
 
@@ -91,7 +138,7 @@ pub fn create_zip_archive(sources: Vec<String>, archive_path: &str) -> Result<()
     Ok(())
 }
 
-/// Extract an archive with security against path traversal attacks
+/// Extract an archive (.zip, .tar, .tar.gz, .tgz) with security against path traversal attacks
 pub fn extract_archive(archive_path: &str, destination_dir: &str) -> Result<(), String> {
     let path = Path::new(archive_path);
     let dest = Path::new(destination_dir);
@@ -104,42 +151,72 @@ pub fn extract_archive(archive_path: &str, destination_dir: &str) -> Result<(), 
         fs::create_dir_all(dest).map_err(|e| e.to_string())?;
     }
 
-    let file = File::open(path).map_err(|e| e.to_string())?;
-    let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
 
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-        let outpath = match file.enclosed_name() {
-            Some(path) => dest.join(path),
-            None => continue, // Discard unsafe path traversal files
-        };
+    if file_name.ends_with(".zip") {
+        let file = File::open(path).map_err(|e| e.to_string())?;
+        let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
 
-        if file.is_dir() {
-            fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
-        } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p).map_err(|e| e.to_string())?;
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+            let outpath = match file.enclosed_name() {
+                Some(path) => dest.join(path),
+                None => continue, // Discard unsafe path traversal files
+            };
+
+            if file.is_dir() {
+                fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() {
+                        fs::create_dir_all(p).map_err(|e| e.to_string())?;
+                    }
                 }
+                let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
+                io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
             }
-            let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
-            io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }
+        Ok(())
+    } else if file_name.ends_with(".tar.gz") || file_name.ends_with(".tgz") {
+        let file = File::open(path).map_err(|e| e.to_string())?;
+        let gz = flate2::read::GzDecoder::new(file);
+        let mut tar = tar::Archive::new(gz);
+        tar.unpack(dest).map_err(|e| e.to_string())?;
+        Ok(())
+    } else if file_name.ends_with(".tar") {
+        let file = File::open(path).map_err(|e| e.to_string())?;
+        let mut tar = tar::Archive::new(file);
+        tar.unpack(dest).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err(format!("Unsupported archive format: {}", file_name))
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn get_unique_temp_dir(prefix: &str) -> std::path::PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let pid = std::process::id();
+        let name = format!("{}_{}_{}", prefix, pid, nanos);
+        let dir = std::env::temp_dir().join(name);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
 
     #[test]
     fn test_zip_create_list_extract() {
-        let temp_dir = std::env::temp_dir().join("foldale_test_archive");
-        let _ = fs::remove_dir_all(&temp_dir);
-        fs::create_dir_all(&temp_dir).unwrap();
+        let temp_dir = get_unique_temp_dir("foldale_test_archive");
 
         let doc1 = temp_dir.join("test1.txt");
         let doc2 = temp_dir.join("test2.txt");

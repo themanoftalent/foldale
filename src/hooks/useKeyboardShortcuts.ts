@@ -24,6 +24,7 @@ export function useKeyboardShortcuts() {
     setCommandPaletteOpen,
     setNewFolderOpen,
     setBatchRenameOpen,
+    undoLastOperation,
     leftPane,
     rightPane,
   } = useFileManagerStore();
@@ -43,14 +44,14 @@ export function useKeyboardShortcuts() {
       // Global shortcuts (even when input might not be focused)
 
       // Command Palette: ⌘K or ⌘P or Ctrl+K / Ctrl+P
-      if (cmdOrCtrl && (e.key === "k" || e.key === "p")) {
+      if (cmdOrCtrl && (e.key === "k" || e.key === "p" || e.key === "K" || e.key === "P")) {
         e.preventDefault();
         setCommandPaletteOpen(true);
         return;
       }
 
       // Search: F3 or ⌘F
-      if (e.key === "F3" || (cmdOrCtrl && e.key === "f")) {
+      if (e.key === "F3" || (cmdOrCtrl && (e.key === "f" || e.key === "F"))) {
         e.preventDefault();
         setSearchOpen(true);
         return;
@@ -76,8 +77,24 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Refresh: F5 or ⌘R
-      if (e.key === "F5" || (cmdOrCtrl && e.key === "r")) {
+      // Undo: ⌘Z / Ctrl+Z
+      if (cmdOrCtrl && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        undoLastOperation();
+        return;
+      }
+
+      // Batch Rename shortcut: ⌘⇧R (Check BEFORE ⌘R)
+      if (cmdOrCtrl && e.shiftKey && (e.key === "R" || e.key === "r")) {
+        e.preventDefault();
+        if (selectedPaths.length > 1) {
+          setBatchRenameOpen(true);
+        }
+        return;
+      }
+
+      // Refresh: F5 or ⌘R (only if shiftKey is false)
+      if (e.key === "F5" || (cmdOrCtrl && !e.shiftKey && (e.key === "r" || e.key === "R"))) {
         e.preventDefault();
         refreshPane(activePane);
         return;
@@ -187,7 +204,7 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Delete / Trash
+      // Delete / Trash (Shift+Delete safely triggers confirmation dialog)
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedPaths.length > 0) {
           e.preventDefault();
@@ -196,15 +213,6 @@ export function useKeyboardShortcuts() {
         } else if (e.key === "Backspace") {
           e.preventDefault();
           navigateUp(activePane);
-        }
-        return;
-      }
-
-      // Batch Rename shortcut: ⌘⇧R
-      if (cmdOrCtrl && e.shiftKey && (e.key === "R" || e.key === "r")) {
-        e.preventDefault();
-        if (selectedPaths.length > 1) {
-          setBatchRenameOpen(true);
         }
         return;
       }
@@ -234,6 +242,7 @@ export function useKeyboardShortcuts() {
     setCommandPaletteOpen,
     setNewFolderOpen,
     setBatchRenameOpen,
+    undoLastOperation,
     leftPane,
     rightPane,
   ]);

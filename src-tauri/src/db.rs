@@ -1,9 +1,10 @@
 use rusqlite::{params, Connection};
+use std::collections::HashMap;
 use std::fs;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::models::{Bookmark, OperationLog};
+use crate::models::{Bookmark, OperationLog, UndoRecord};
 
 pub struct Database {
     conn: Mutex<Connection>,
@@ -20,7 +21,7 @@ impl Database {
 
         let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
-        // Initialize schema
+        // Initialize schema (backward compatible)
         conn.execute_batch(
             "
             CREATE TABLE IF NOT EXISTS bookmarks (
@@ -50,6 +51,14 @@ impl Database {
                 timestamp INTEGER NOT NULL,
                 status TEXT NOT NULL,
                 error_message TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS undo_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                op_type TEXT NOT NULL,
+                description TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                timestamp INTEGER NOT NULL
             );
             ",
         )
@@ -111,27 +120,37 @@ impl Database {
             })
             .map_err(|e| e.to_string())?;
 
-        let mut bookmarks = Vec::new();
-        for r in rows.flatten() {
-            bookmarks.push(r);
+        let mut list = Vec::new();
+        for b in rows.flatten() {
+            list.push(b);
         }
-        Ok(bookmarks)
+        Ok(list)
     }
 
     pub fn add_bookmark(&self, name: &str, path: &str, icon: &str) -> Result<Bookmark, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let max_order: i32 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(order_index), 0) FROM bookmarks",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
         conn.execute(
-            "INSERT OR REPLACE INTO bookmarks (name, path, icon, order_index) VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(order_index), 0) + 1 FROM bookmarks))",
-            params![name, path, icon],
-        ).map_err(|e| e.to_string())?;
+            "INSERT OR REPLACE INTO bookmarks (name, path, icon, order_index) VALUES (?1, ?2, ?3, ?4)",
+            params![name, path, icon, max_order + 1],
+        )
+        .map_err(|e| e.to_string())?;
 
         let id = conn.last_insert_rowid();
+
         Ok(Bookmark {
             id,
             name: name.to_string(),
             path: path.to_string(),
             icon: icon.to_string(),
-            order_index: 0,
+            order_index: max_order + 1,
         })
     }
 
@@ -165,10 +184,11 @@ impl Database {
         Ok(())
     }
 
+    /// Retrieve distinct recent paths ordered chronologically by last visited time
     pub fn get_recent_history(&self, limit: usize) -> Result<Vec<String>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
-            .prepare("SELECT DISTINCT path FROM history ORDER BY visited_at DESC LIMIT ?1")
+            .prepare("SELECT path FROM history GROUP BY path ORDER BY MAX(visited_at) DESC LIMIT ?1")
             .map_err(|e| e.to_string())?;
 
         let rows = stmt
@@ -197,6 +217,23 @@ impl Database {
         }
     }
 
+    pub fn get_all_settings(&self) -> Result<HashMap<String, String>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare("SELECT key, value FROM settings")
+            .map_err(|e| e.to_string())?;
+
+        let rows = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| e.to_string())?;
+
+        let mut map = HashMap::new();
+        for r in rows.flatten() {
+            map.insert(r.0, r.1);
+        }
+        Ok(map)
+    }
+
     pub fn set_setting(&self, key: &str, value: &str) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         conn.execute(
@@ -205,6 +242,52 @@ impl Database {
         )
         .map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    // --- Undo Management ---
+    pub fn push_undo(&self, op_type: &str, description: &str, payload: &str) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+
+        conn.execute(
+            "INSERT INTO undo_records (op_type, description, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+            params![op_type, description, payload, now],
+        )
+        .map_err(|e| e.to_string())?;
+
+        // Retain last 30 undo records
+        let _ = conn.execute(
+            "DELETE FROM undo_records WHERE id NOT IN (SELECT id FROM undo_records ORDER BY id DESC LIMIT 30)",
+            [],
+        );
+
+        Ok(())
+    }
+
+    pub fn pop_undo(&self) -> Result<Option<UndoRecord>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let record = conn.query_row(
+            "SELECT id, op_type, description, payload, timestamp FROM undo_records ORDER BY id DESC LIMIT 1",
+            [],
+            |row| {
+                Ok(UndoRecord {
+                    id: row.get(0)?,
+                    op_type: row.get(1)?,
+                    description: row.get(2)?,
+                    payload: row.get(3)?,
+                    timestamp: row.get(4)?,
+                })
+            },
+        ).ok();
+
+        if let Some(ref r) = record {
+            let _ = conn.execute("DELETE FROM undo_records WHERE id = ?1", params![r.id]);
+        }
+
+        Ok(record)
     }
 
     // --- Operation Logs ---
@@ -225,7 +308,8 @@ impl Database {
         conn.execute(
             "INSERT INTO operation_logs (op_type, source, destination, timestamp, status, error_message) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![op_type, source, dest, now, status, error],
-        ).map_err(|e| e.to_string())?;
+        )
+        .map_err(|e| e.to_string())?;
 
         Ok(())
     }
@@ -251,8 +335,8 @@ impl Database {
             .map_err(|e| e.to_string())?;
 
         let mut list = Vec::new();
-        for r in rows.flatten() {
-            list.push(r);
+        for l in rows.flatten() {
+            list.push(l);
         }
         Ok(list)
     }

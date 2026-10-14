@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use tauri::State;
 
@@ -5,12 +7,14 @@ use crate::archive;
 use crate::db::Database;
 use crate::fs_ops;
 use crate::models::{
-    ArchiveEntry, BatchRenameResult, Bookmark, DetailedFileInfo, DirSizeResult,
-    DirectoryListing, DriveInfo, OperationLog, RenameOperation, SearchQuery, SearchResultEntry,
-    SystemLocations,
+    ArchiveEntry, BatchRenameResult, Bookmark, ConflictItem, ConflictPolicy, DetailedFileInfo,
+    DirSizeResult, DirectoryListing, DriveInfo, OperationLog, RenameOperation, SearchQuery,
+    SearchResultEntry, SystemLocations,
 };
 use crate::search;
 use crate::system;
+use crate::transfer;
+use crate::trash;
 
 pub struct AppState {
     pub db: Arc<Database>,
@@ -73,6 +77,18 @@ pub async fn rename_item(
     let _ = state
         .db
         .log_operation("rename", &old_path, Some(&new_path), "success", None);
+
+    let payload = serde_json::json!({
+        "current": new_path,
+        "original": old_path,
+    })
+    .to_string();
+    let desc = Path::new(&new_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "item".to_string());
+    let _ = state.db.push_undo("rename", &format!("Rename to '{}'", desc), &payload);
+
     Ok(())
 }
 
@@ -93,19 +109,33 @@ pub async fn batch_rename(
 }
 
 #[tauri::command]
-pub async fn copy_items(
+pub async fn check_conflicts(
     sources: Vec<String>,
     destination_dir: String,
-    overwrite: bool,
+) -> Result<Vec<ConflictItem>, String> {
+    transfer::check_conflicts(&sources, &destination_dir)
+}
+
+#[tauri::command]
+pub async fn copy_items_with_policy(
+    sources: Vec<String>,
+    destination_dir: String,
+    policy: ConflictPolicy,
     state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<(String, String)>, String> {
     let dest_clone = destination_dir.clone();
-    let count = sources.len();
     let copied = tokio::task::spawn_blocking(move || {
-        fs_ops::copy_items(sources, destination_dir, overwrite)
+        transfer::copy_items_with_policy(&sources, &destination_dir, policy)
     })
     .await
     .map_err(|e| e.to_string())??;
+
+    let count = copied.len();
+    let created_targets: Vec<String> = copied.iter().map(|(_, target)| target.clone()).collect();
+    let payload = serde_json::to_string(&created_targets).unwrap_or_default();
+    let _ = state
+        .db
+        .push_undo("copy", &format!("Copy {} item(s)", count), &payload);
 
     let _ = state.db.log_operation(
         "copy",
@@ -118,19 +148,28 @@ pub async fn copy_items(
 }
 
 #[tauri::command]
-pub async fn move_items(
+pub async fn move_items_with_policy(
     sources: Vec<String>,
     destination_dir: String,
-    overwrite: bool,
+    policy: ConflictPolicy,
     state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<(String, String)>, String> {
     let dest_clone = destination_dir.clone();
-    let count = sources.len();
     let moved = tokio::task::spawn_blocking(move || {
-        fs_ops::move_items(sources, destination_dir, overwrite)
+        transfer::move_items_with_policy(&sources, &destination_dir, policy)
     })
     .await
     .map_err(|e| e.to_string())??;
+
+    let count = moved.len();
+    let reverse_pairs: Vec<(String, String)> = moved
+        .iter()
+        .map(|(src, target)| (target.clone(), src.clone()))
+        .collect();
+    let payload = serde_json::to_string(&reverse_pairs).unwrap_or_default();
+    let _ = state
+        .db
+        .push_undo("move", &format!("Move {} item(s)", count), &payload);
 
     let _ = state.db.log_operation(
         "move",
@@ -140,6 +179,86 @@ pub async fn move_items(
         None,
     );
     Ok(moved)
+}
+
+#[tauri::command]
+pub async fn undo_last_operation(state: State<'_, AppState>) -> Result<String, String> {
+    let record = state
+        .db
+        .pop_undo()?
+        .ok_or_else(|| "No operation to undo".to_string())?;
+
+    match record.op_type.as_str() {
+        "rename" => {
+            let val: serde_json::Value =
+                serde_json::from_str(&record.payload).map_err(|e| e.to_string())?;
+            let current = val["current"]
+                .as_str()
+                .ok_or("Invalid undo payload: current missing")?;
+            let original = val["original"]
+                .as_str()
+                .ok_or("Invalid undo payload: original missing")?;
+            fs_ops::rename_item(current, original)?;
+            Ok(format!("Undid rename: reverted to '{}'", original))
+        }
+        "move" => {
+            let pairs: Vec<(String, String)> =
+                serde_json::from_str(&record.payload).map_err(|e| e.to_string())?;
+            for (from, to) in &pairs {
+                let to_path = Path::new(to);
+                let to_parent = to_path
+                    .parent()
+                    .unwrap_or_else(|| Path::new("/"))
+                    .to_string_lossy()
+                    .to_string();
+                transfer::move_items_with_policy(
+                    &[from.clone()],
+                    &to_parent,
+                    ConflictPolicy::Replace,
+                )?;
+            }
+            Ok(format!("Undid {}", record.description))
+        }
+        "copy" => {
+            let created: Vec<String> =
+                serde_json::from_str(&record.payload).map_err(|e| e.to_string())?;
+            trash::move_to_trash(&created)?;
+            Ok(format!("Undid {}: removed created items", record.description))
+        }
+        _ => Err(format!("Unsupported undo operation type: {}", record.op_type)),
+    }
+}
+
+#[tauri::command]
+pub async fn copy_items(
+    sources: Vec<String>,
+    destination_dir: String,
+    overwrite: bool,
+    state: State<'_, AppState>,
+) -> Result<Vec<String>, String> {
+    let policy = if overwrite {
+        ConflictPolicy::Replace
+    } else {
+        ConflictPolicy::KeepBoth
+    };
+    let results = copy_items_with_policy(sources, destination_dir, policy, state).await?;
+    Ok(results.into_iter().map(|(_, target)| target).collect())
+}
+
+#[tauri::command]
+pub async fn move_items(
+    sources: Vec<String>,
+    destination_dir: String,
+    overwrite: bool,
+    state: State<'_, AppState>,
+) -> Result<Vec<String>, String> {
+    let policy = if overwrite {
+        ConflictPolicy::Replace
+    } else {
+        ConflictPolicy::KeepBoth
+    };
+    let results = move_items_with_policy(sources, destination_dir, policy, state).await?;
+    Ok(results.into_iter().map(|(_, target)| target).collect())
 }
 
 #[tauri::command]
@@ -311,6 +430,13 @@ pub async fn get_setting(
     state: State<'_, AppState>,
 ) -> Result<Option<String>, String> {
     state.db.get_setting(&key)
+}
+
+#[tauri::command]
+pub async fn get_all_settings(
+    state: State<'_, AppState>,
+) -> Result<HashMap<String, String>, String> {
+    state.db.get_all_settings()
 }
 
 #[tauri::command]

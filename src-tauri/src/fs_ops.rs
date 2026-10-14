@@ -385,24 +385,11 @@ pub fn batch_rename(operations: Vec<RenameOperation>) -> Result<BatchRenameResul
 
 /// Delete items to native OS Trash or permanently
 pub fn delete_items(paths: Vec<String>, permanent: bool) -> Result<(), String> {
-    for p in paths {
-        let path = Path::new(&p);
-        if !path.exists() {
-            continue;
-        }
-
-        if permanent {
-            if path.is_dir() {
-                fs::remove_dir_all(path).map_err(|e| e.to_string())?;
-            } else {
-                fs::remove_file(path).map_err(|e| e.to_string())?;
-            }
-        } else {
-            trash::delete(path).map_err(|e| format!("Failed to move to Trash: {}", e))?;
-        }
+    if permanent {
+        crate::trash::permanently_delete(&paths)
+    } else {
+        crate::trash::move_to_trash(&paths)
     }
-
-    Ok(())
 }
 
 /// Duplicate a file or directory with automatic naming
@@ -589,7 +576,7 @@ pub fn read_text_preview(file_path: &str, max_bytes: usize) -> Result<String, St
         .or_else(|_| Ok(String::from_utf8_lossy(slice).to_string()))
 }
 
-/// Read file as base64 data URI
+/// Read file as base64 data URI (capped at 25MB to prevent memory exhaustion)
 pub fn read_file_base64(file_path: &str) -> Result<String, String> {
     use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
     let path = Path::new(file_path);
@@ -597,10 +584,15 @@ pub fn read_file_base64(file_path: &str) -> Result<String, String> {
         return Err("Not a regular file".to_string());
     }
 
+    let meta = fs::metadata(path).map_err(|e| e.to_string())?;
+    if meta.len() > 25 * 1024 * 1024 {
+        return Err("File is too large for inline preview (max 25 MB)".to_string());
+    }
+
     let bytes = fs::read(path).map_err(|e| e.to_string())?;
     let b64 = BASE64_STANDARD.encode(&bytes);
     let ext = path.extension().map(|e| e.to_string_lossy().to_string());
-    let mime = detect_mime_type(ext.as_deref());
+    let mime = crate::util::detect_mime_type(ext.as_deref());
     Ok(format!("data:{};base64,{}", mime, b64))
 }
 
@@ -608,14 +600,23 @@ pub fn read_file_base64(file_path: &str) -> Result<String, String> {
 mod tests {
     use super::*;
     use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn get_unique_temp_dir(prefix: &str) -> std::path::PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let pid = std::process::id();
+        let name = format!("{}_{}_{}", prefix, pid, nanos);
+        let dir = std::env::temp_dir().join(name);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
 
     #[test]
     fn test_create_and_list_dir() {
-        let temp_dir = std::env::temp_dir().join("foldale_test_dir");
-        let _ = fs::remove_dir_all(&temp_dir);
-
-        create_directory(&temp_dir.to_string_lossy()).expect("Failed to create dir");
-        assert!(temp_dir.exists());
+        let temp_dir = get_unique_temp_dir("foldale_test_dir");
 
         let test_file = temp_dir.join("hello.txt");
         create_file(&test_file.to_string_lossy(), Some("Hello Foldale!"))
@@ -627,15 +628,12 @@ mod tests {
         assert_eq!(listing.total_files, 1);
         assert_eq!(listing.entries[0].name, "hello.txt");
 
-        // Clean up
         let _ = fs::remove_dir_all(&temp_dir);
     }
 
     #[test]
     fn test_duplicate_and_rename() {
-        let temp_dir = std::env::temp_dir().join("foldale_test_dup");
-        let _ = fs::remove_dir_all(&temp_dir);
-        create_directory(&temp_dir.to_string_lossy()).unwrap();
+        let temp_dir = get_unique_temp_dir("foldale_test_dup");
 
         let orig_file = temp_dir.join("sample.txt");
         create_file(&orig_file.to_string_lossy(), Some("Sample content")).unwrap();
@@ -654,9 +652,7 @@ mod tests {
 
     #[test]
     fn test_calculate_dir_size() {
-        let temp_dir = std::env::temp_dir().join("foldale_test_size");
-        let _ = fs::remove_dir_all(&temp_dir);
-        create_directory(&temp_dir.to_string_lossy()).unwrap();
+        let temp_dir = get_unique_temp_dir("foldale_test_size");
 
         let f1 = temp_dir.join("f1.bin");
         fs::write(&f1, vec![0u8; 1024]).unwrap();

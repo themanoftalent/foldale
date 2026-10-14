@@ -10,11 +10,28 @@ import { BatchRenameModal } from "./components/Modals/BatchRenameModal";
 import { PropertiesModal } from "./components/Modals/PropertiesModal";
 import { SearchModal } from "./components/Modals/SearchModal";
 import { NewItemModal } from "./components/Modals/NewItemModal";
+import { ConflictModal } from "./components/Modals/ConflictModal";
+import { ConfirmDeleteModal } from "./components/Modals/ConfirmDeleteModal";
+import { UndoToast } from "./components/Modals/UndoToast";
 
 export const App: React.FC = () => {
-  const { init, theme, accentColor, layoutMode } = useFileManagerStore();
+  const {
+    init,
+    theme,
+    accentColor,
+    layoutMode,
+    pendingConflict,
+    setPendingConflict,
+    resolveConflict,
+    pendingDelete,
+    setPendingDelete,
+    confirmDelete,
+    undoToastMessage,
+    setUndoToastMessage,
+    undoLastOperation,
+  } = useFileManagerStore();
 
-  // Initialize store and fetch directories
+  // Initialize store and fetch directories & settings
   useEffect(() => {
     init();
   }, [init]);
@@ -34,6 +51,16 @@ export const App: React.FC = () => {
     // Accent attribute
     root.setAttribute("data-accent", accentColor);
   }, [theme, accentColor]);
+
+  // Auto-dismiss undo toast after 6 seconds
+  useEffect(() => {
+    if (undoToastMessage) {
+      const timer = setTimeout(() => {
+        setUndoToastMessage(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [undoToastMessage, setUndoToastMessage]);
 
   // Bind global keyboard shortcuts
   useKeyboardShortcuts();
@@ -77,6 +104,35 @@ export const App: React.FC = () => {
       <PropertiesModal />
       <SearchModal />
       <NewItemModal />
+
+      {/* File Conflict Resolution Dialog */}
+      {pendingConflict && (
+        <ConflictModal
+          conflicts={pendingConflict.conflicts}
+          isMove={pendingConflict.isMove}
+          onResolve={(policy, applyToAll) => resolveConflict(policy, applyToAll)}
+          onCancel={() => setPendingConflict(null)}
+        />
+      )}
+
+      {/* Permanent Delete Confirmation Dialog */}
+      {pendingDelete && (
+        <ConfirmDeleteModal
+          paths={pendingDelete.paths}
+          permanent={pendingDelete.permanent}
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+
+      {/* Undo Toast Notification */}
+      {undoToastMessage && (
+        <UndoToast
+          message={undoToastMessage}
+          onUndo={undoLastOperation}
+          onDismiss={() => setUndoToastMessage(null)}
+        />
+      )}
     </div>
   );
 };

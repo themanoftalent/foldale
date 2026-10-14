@@ -5,6 +5,9 @@ pub mod fs_ops;
 pub mod models;
 pub mod search;
 pub mod system;
+pub mod transfer;
+pub mod trash;
+pub mod util;
 
 use std::sync::Arc;
 use commands::AppState;
@@ -29,8 +32,12 @@ pub fn run() {
             commands::create_directory,
             commands::rename_item,
             commands::batch_rename,
+            commands::check_conflicts,
             commands::copy_items,
+            commands::copy_items_with_policy,
             commands::move_items,
+            commands::move_items_with_policy,
+            commands::undo_last_operation,
             commands::delete_items,
             commands::duplicate_item,
             commands::create_symlink,
@@ -50,6 +57,7 @@ pub fn run() {
             commands::remove_bookmark,
             commands::get_recent_history,
             commands::get_setting,
+            commands::get_all_settings,
             commands::set_setting,
             commands::get_operation_logs
         ])

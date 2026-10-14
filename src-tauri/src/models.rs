@@ -142,3 +142,40 @@ pub struct DirSizeResult {
     pub file_count: u64,
     pub dir_count: u64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConflictItem {
+    pub source_path: String,
+    pub destination_path: String,
+    pub is_dir: bool,
+    pub source_size: u64,
+    pub target_size: u64,
+    pub source_modified: Option<i64>,
+    pub target_modified: Option<i64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConflictPolicy {
+    Replace,
+    KeepBoth,
+    Skip,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UndoRecord {
+    pub id: i64,
+    pub op_type: String, // "rename", "move", "copy", "trash"
+    pub description: String,
+    pub payload: String, // JSON encoded reverse action
+    pub timestamp: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProgressUpdate {
+    pub task_id: String,
+    pub percentage: f32,
+    pub current_file: String,
+    pub bytes_copied: u64,
+    pub total_bytes: u64,
+}

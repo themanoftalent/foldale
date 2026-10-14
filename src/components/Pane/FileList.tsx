@@ -55,6 +55,8 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     setPreviewPath,
     setPropertiesPath,
     setBatchRenameOpen,
+    setPendingConflict,
+    setUndoToastMessage,
   } = useFileManagerStore();
 
   const paneState = paneId === "left" ? leftPane : rightPane;
@@ -130,6 +132,8 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     });
   }, [listing?.entries, filterText, sortField, sortDirection]);
 
+  const orderedPaths = React.useMemo(() => entries.map((e) => e.path), [entries]);
+
   // Handle click outside context menu
   useEffect(() => {
     const handleClickOutside = () => {
@@ -183,7 +187,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     setActivePane(paneId);
     const multi = e.metaKey || e.ctrlKey;
     const range = e.shiftKey;
-    selectItem(paneId, item.path, multi, range);
+    selectItem(paneId, item.path, multi, range, orderedPaths);
   };
 
   const handleItemDoubleClick = async (item: FileEntry) => {
@@ -204,7 +208,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     setActivePane(paneId);
 
     if (item && !selectedPaths.includes(item.path)) {
-      selectItem(paneId, item.path, false, false);
+      selectItem(paneId, item.path, false, false, orderedPaths);
     }
 
     setContextMenu({
@@ -246,23 +250,23 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
         e.preventDefault();
         const nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, entries.length - 1);
         const nextItem = entries[nextIndex];
-        selectItem(paneId, nextItem.path, e.shiftKey, false);
+        selectItem(paneId, nextItem.path, e.shiftKey, false, orderedPaths);
         rowRefs.current[nextItem.path]?.scrollIntoView({ block: "nearest" });
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         const prevIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
         const prevItem = entries[prevIndex];
-        selectItem(paneId, prevItem.path, e.shiftKey, false);
+        selectItem(paneId, prevItem.path, e.shiftKey, false, orderedPaths);
         rowRefs.current[prevItem.path]?.scrollIntoView({ block: "nearest" });
       } else if (e.key === "Home") {
         e.preventDefault();
         const first = entries[0];
-        selectItem(paneId, first.path, false, false);
+        selectItem(paneId, first.path, false, false, orderedPaths);
         rowRefs.current[first.path]?.scrollIntoView({ block: "nearest" });
       } else if (e.key === "End") {
         e.preventDefault();
         const last = entries[entries.length - 1];
-        selectItem(paneId, last.path, false, false);
+        selectItem(paneId, last.path, false, false, orderedPaths);
         rowRefs.current[last.path]?.scrollIntoView({ block: "nearest" });
       } else if (e.key === "Enter") {
         e.preventDefault();
@@ -287,6 +291,7 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
     paneId,
     selectItem,
     handleStartRename,
+    orderedPaths,
   ]);
 
   // Drag and Drop handlers
@@ -308,7 +313,19 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       const sources: string[] = JSON.parse(data);
       if (sources.includes(targetFolder)) return; // Avoid dropping into self
 
-      await api.moveItems(sources, targetFolder, false);
+      const conflicts = await api.checkConflicts(sources, targetFolder);
+      if (conflicts.length > 0) {
+        setPendingConflict({
+          sources,
+          destination: targetFolder,
+          isMove: true,
+          conflicts,
+        });
+        return;
+      }
+
+      await api.moveItemsWithPolicy(sources, targetFolder, "replace");
+      setUndoToastMessage(`Moved ${sources.length} item(s)`);
       await Promise.all([refreshPane("left"), refreshPane("right")]);
     } catch (err: any) {
       alert(`Move error: ${err}`);
@@ -327,7 +344,19 @@ export const FileList: React.FC<FileListProps> = ({ paneId }) => {
       const sources: string[] = JSON.parse(data);
       if (sources.includes(currentPath)) return;
 
-      await api.moveItems(sources, currentPath, false);
+      const conflicts = await api.checkConflicts(sources, currentPath);
+      if (conflicts.length > 0) {
+        setPendingConflict({
+          sources,
+          destination: currentPath,
+          isMove: true,
+          conflicts,
+        });
+        return;
+      }
+
+      await api.moveItemsWithPolicy(sources, currentPath, "replace");
+      setUndoToastMessage(`Moved ${sources.length} item(s)`);
       await Promise.all([refreshPane("left"), refreshPane("right")]);
     } catch (err: any) {
       alert(`Move error: ${err}`);

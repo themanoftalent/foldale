@@ -163,3 +163,24 @@ export interface TransferTask {
   speed?: string;
   error?: string;
 }
+
+export interface ConflictItem {
+  source_path: string;
+  destination_path: string;
+  is_dir: boolean;
+  source_size: number;
+  target_size: number;
+  source_modified?: number;
+  target_modified?: number;
+}
+
+export type ConflictPolicy = "replace" | "keep_both" | "skip";
+
+export interface UndoRecord {
+  id: number;
+  op_type: string;
+  description: string;
+  payload: string;
+  timestamp: number;
+}
+
